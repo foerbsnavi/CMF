@@ -1,0 +1,32 @@
+# ── Geheimnisse / Laufzeitdaten ──────────────────────────────
+.env
+.env.*
+config/login_attempts.json
+
+# ── User-Inhalte (werden zur Laufzeit erzeugt) ───────────────
+public/media/*
+!public/media/.gitkeep
+public/files/*
+!public/files/.gitkeep
+
+# ── Generierte Dateien ───────────────────────────────────────
+public/assets/css/theme.css
+
+# ── Release-Artefakte ────────────────────────────────────────
+*.zip
+
+# ── OS / Editor ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Node (falls lokal Tooling verwendet wird) ────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

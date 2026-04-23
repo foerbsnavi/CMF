@@ -1,0 +1,23 @@
+{
+    "meta": {
+        "title": "Blog",
+        "description": "Neuigkeiten und Beitraege."
+    },
+    "content": {
+        "blocks": [
+            {
+                "id": "h1_blog",
+                "type": "heading",
+                "data": {
+                    "level": 1,
+                    "text": "Blog"
+                }
+            },
+            {
+                "id": "blog_grid",
+                "type": "blog_overview",
+                "data": {}
+            }
+        ]
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "meta": {
+        "title": "Footer",
+        "description": ""
+    },
+    "content": {
+        "blocks": [
+            {
+                "id": "html_footer",
+                "type": "html",
+                "data": {
+                    "code": "<div class=\"footer-inner\">\n  <span class=\"footer-copy\">\u00a9 2026 Meine Webseite</span>\n  <div class=\"footer-links\">\n    <a href=\"/impressum\">Impressum</a>\n    <a href=\"/datenschutz\">Datenschutz</a>\n  </div>\n</div>"
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "meta": {
+        "title": "Header",
+        "description": ""
+    },
+    "content": {
+        "blocks": [
+            {
+                "id": "html_header",
+                "type": "html",
+                "data": {
+                    "code": "<div class=\"site-header\"><div class=\"site-title\">Meine Webseite</div><p class=\"site-tagline\">Kurze Beschreibung der Webseite</p></div>"
+                }
+            }
+        ]
+    }
+}

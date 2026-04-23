@@ -1,0 +1,25 @@
+{
+    "meta": {
+        "title": "Startseite",
+        "description": "Willkommen auf meiner Webseite."
+    },
+    "content": {
+        "blocks": [
+            {
+                "id": "h1_start",
+                "type": "heading",
+                "data": {
+                    "level": 1,
+                    "text": "Startseite"
+                }
+            },
+            {
+                "id": "t1_intro",
+                "type": "text",
+                "data": {
+                    "html": "<p>Willkommen. Diese Seite wurde mit dem Content Management Frame erstellt.</p>"
+                }
+            }
+        ]
+    }
+}

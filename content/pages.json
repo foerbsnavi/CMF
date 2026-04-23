@@ -1,0 +1,60 @@
+{
+    "pages": [
+        {
+            "id": "home",
+            "slug": "home",
+            "title": "Start",
+            "status": "published",
+            "nav": {
+                "show": true,
+                "order": 1,
+                "label": "Start",
+                "parent": null
+            },
+            "created": "2026-03-03T00:00:00+01:00",
+            "updated": "2026-03-03T00:00:00+01:00"
+        },
+        {
+            "id": "blog",
+            "slug": "blog",
+            "title": "Blog",
+            "status": "published",
+            "nav": {
+                "show": true,
+                "order": 2,
+                "label": "Blog",
+                "parent": null
+            },
+            "created": "2026-04-15T00:00:00+02:00",
+            "updated": "2026-04-15T00:00:00+02:00"
+        },
+        {
+            "id": "impressum",
+            "slug": "impressum",
+            "title": "Impressum",
+            "status": "published",
+            "nav": {
+                "show": false,
+                "order": 99,
+                "label": "Impressum",
+                "parent": null
+            },
+            "created": "2026-03-03T00:00:00+01:00",
+            "updated": "2026-03-03T00:00:00+01:00"
+        },
+        {
+            "id": "datenschutz",
+            "slug": "datenschutz",
+            "title": "Datenschutz",
+            "status": "published",
+            "nav": {
+                "show": false,
+                "order": 100,
+                "label": "Datenschutz",
+                "parent": null
+            },
+            "created": "2026-03-03T00:00:00+01:00",
+            "updated": "2026-03-03T00:00:00+01:00"
+        }
+    ]
+}

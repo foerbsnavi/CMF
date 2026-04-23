@@ -1,0 +1,34 @@
+{
+    "container": "1100px",
+    "pad": "16px",
+    "gap": "16px",
+    "radius": {
+        "sm": "8px",
+        "md": "8px",
+        "lg": "8px"
+    },
+    "colors": {
+        "bg": "#ffffff",
+        "text": "#1c1c1c",
+        "muted": "#777777",
+        "border": "#d8d2c8",
+        "primary": "#ea6b17",
+        "secondary": "#06536c",
+        "primary_text": "#ffffff",
+        "link": "#ea6b17"
+    },
+    "type": {
+        "body": "0.9rem",
+        "h1": "3rem",
+        "h2": "2rem",
+        "h3": "1.5rem",
+        "h4": "1.2rem",
+        "h5": "1rem"
+    },
+    "fonts": {
+        "body": "Roboto",
+        "body_weight": "regular",
+        "heading": "PlayfairDisplay",
+        "heading_weight": "bold"
+    }
+}

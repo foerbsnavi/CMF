@@ -1,0 +1,25 @@
+{
+    "meta": {
+        "title": "Datenschutzerklärung",
+        "description": "Datenschutzerklärung dieser Webseite."
+    },
+    "content": {
+        "blocks": [
+            {
+                "id": "h1_datenschutz",
+                "type": "heading",
+                "data": {
+                    "level": 1,
+                    "text": "Datenschutzerklärung"
+                }
+            },
+            {
+                "id": "t1_platzhalter",
+                "type": "text",
+                "data": {
+                    "html": "<p>Bitte ersetze diesen Inhalt durch deine Datenschutzerklärung.</p>"
+                }
+            }
+        ]
+    }
+}

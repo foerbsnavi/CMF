@@ -1,0 +1,25 @@
+{
+    "meta": {
+        "title": "Impressum",
+        "description": "Impressum dieser Webseite."
+    },
+    "content": {
+        "blocks": [
+            {
+                "id": "h1_impressum",
+                "type": "heading",
+                "data": {
+                    "level": 1,
+                    "text": "Impressum"
+                }
+            },
+            {
+                "id": "t1_angaben",
+                "type": "text",
+                "data": {
+                    "html": "<p><strong>Angaben gemäß § 5 TMG</strong></p><p>Vorname Nachname<br>Musterstraße 1<br>12345 Musterstadt</p><p>E-Mail: kontakt@meinewebseite.de</p>"
+                }
+            }
+        ]
+    }
+}
