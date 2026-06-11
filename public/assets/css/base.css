@@ -701,6 +701,13 @@ footer a:hover {
   line-height: 1.5
 }
 
+.blog-card-date {
+  display: block;
+  margin: 0 0 4px;
+  font-size: .75em;
+  color: var(--color-muted, #666)
+}
+
 @media (max-width:1200px) {
   .blog-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) }
 }

@@ -322,9 +322,20 @@ final class Renderer {
         ? '<div class="blog-card-image"><img src="' . $image . '" alt="" loading="lazy"></div>'
         : '';
 
+      // Veroeffentlichungsdatum (created) als <time>-Element
+      $dateHtml = '';
+      $created = trim((string)($post['created'] ?? ''));
+      if ($created !== '') {
+        $ts = strtotime($created);
+        if ($ts !== false) {
+          $dateHtml = '<time class="blog-card-date" datetime="' . date('Y-m-d', $ts) . '">' . date('d.m.Y', $ts) . '</time>';
+        }
+      }
+
       $cards .= '<a class="blog-card" href="' . $href . '" aria-label="' . $title . '">'
         . $imgHtml
         . '<div class="blog-card-body">'
+        . $dateHtml
         . '<h3 class="blog-card-title">' . $title . '</h3>'
         . ($desc !== '' ? '<p class="blog-card-desc">' . $desc . '</p>' : '')
         . '</div></a>';
