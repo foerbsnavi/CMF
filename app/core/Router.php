@@ -24,7 +24,7 @@ final class Router {
           foreach ($blogIndex['posts'] ?? [] as $post) {
             if (($post['slug'] ?? '') === $postSlug && ($post['status'] ?? 'draft') === 'published') {
               $postData = Storage::readJson('content/blog/' . $post['id'] . '.json');
-              echo Renderer::renderPage($blogSlug, $postData, $pagesIndex);
+              echo Renderer::renderPage($blogSlug . '/' . $postSlug, $postData, $pagesIndex);
               return;
             }
           }

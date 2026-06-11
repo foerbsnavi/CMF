@@ -8,6 +8,15 @@ use App\Core\Storage;
 
 final class UpdateController {
 
+  /**
+   * Erlaubte Update-Server. Updates werden nur von diesen Hosts
+   * und nur per HTTPS geladen — verhindert, dass eine manipulierte
+   * update_url in version.json fremden Code nachlaedt.
+   */
+  private const ALLOWED_UPDATE_HOSTS = [
+    'cmf.brosemedien.de',
+  ];
+
   /** Dateien/Ordner die beim Update ersetzt werden */
   private const SYSTEM_PATHS = [
     'app',
@@ -41,18 +50,18 @@ final class UpdateController {
   public function check(): void {
     $local = Storage::readJson('version.json');
     $localVersion = (string)($local['version'] ?? '0.0.0');
-    $updateUrl = trim((string)($local['update_url'] ?? ''));
+    $updateUrl = $this->validatedUpdateUrl();
 
     $remote = null;
     $error = null;
 
-    if ($updateUrl !== '') {
+    if ($updateUrl !== null) {
       $remote = $this->fetchRemoteVersion($updateUrl . '/api.php?a=version_check');
       if ($remote === null) {
         $error = 'Verbindung zum Update-Server fehlgeschlagen.';
       }
     } else {
-      $error = 'Kein Update-Server konfiguriert (update_url fehlt in version.json).';
+      $error = 'Kein gueltiger Update-Server konfiguriert (update_url in version.json fehlt oder ist nicht erlaubt).';
     }
 
     $remoteVersion = $remote ? (string)($remote['version'] ?? '0.0.0') : null;
@@ -71,11 +80,10 @@ final class UpdateController {
 
     Csrf::check();
 
-    $local = Storage::readJson('version.json');
-    $updateUrl = trim((string)($local['update_url'] ?? ''));
+    $updateUrl = $this->validatedUpdateUrl();
 
-    if ($updateUrl === '') {
-      $_SESSION['_flash'] = 'Kein Update-Server konfiguriert.';
+    if ($updateUrl === null) {
+      $_SESSION['_flash'] = 'Kein gueltiger Update-Server konfiguriert.';
       header('Location: /admin.php?a=settings');
       exit;
     }
@@ -123,6 +131,10 @@ final class UpdateController {
       @mkdir($extractDir, 0775, true);
       $zip->extractTo($extractDir);
       $zip->close();
+
+      // Zweite Verteidigungslinie: alle entpackten Pfade muessen
+      // per realpath innerhalb des Extraktionsordners liegen
+      $this->assertInsideDir($extractDir);
 
       // 4. Validieren: Wichtige Dateien vorhanden?
       if (!is_dir($extractDir . '/app') || !is_file($extractDir . '/public/index.php')) {
@@ -199,8 +211,9 @@ final class UpdateController {
       $_SESSION['_flash'] = 'Update auf Version ' . ($newV['version'] ?? '?') . ' erfolgreich installiert.';
 
     } catch (\Throwable $e) {
-      // Fehlerbehandlung: Maintenance aufheben
-      $_SESSION['_flash'] = 'Update fehlgeschlagen: ' . $e->getMessage();
+      // Details nur ins Server-Log — keine internen Pfade in der UI
+      error_log('CMF Update fehlgeschlagen: ' . $e->getMessage());
+      $_SESSION['_flash'] = 'Update fehlgeschlagen. Details stehen im Server-Fehlerprotokoll.';
     } finally {
       // Maintenance-Modus deaktivieren
       @unlink($root . '/config/.maintenance');
@@ -234,6 +247,16 @@ final class UpdateController {
     sort($backups);
     $latest = end($backups);
 
+    // Backup-Pfad muss real innerhalb von config/ liegen (Symlink-Schutz)
+    $configReal = str_replace('\\', '/', (string)realpath($root . '/config'));
+    $latestReal = str_replace('\\', '/', (string)realpath($latest));
+    if ($configReal === '' || $latestReal === '' || !str_starts_with($latestReal, $configReal . '/')) {
+      $_SESSION['_flash'] = 'Backup ungueltig.';
+      header('Location: /admin.php?a=settings');
+      exit;
+    }
+    $latest = $latestReal;
+
     if (is_dir($latest . '/app')) {
       @file_put_contents($root . '/config/.maintenance', date('c'));
       $this->deleteDir($root . '/app');
@@ -252,6 +275,48 @@ final class UpdateController {
 
     header('Location: /admin.php?a=settings');
     exit;
+  }
+
+  /**
+   * Liest update_url aus version.json und gibt sie nur zurueck,
+   * wenn sie HTTPS nutzt und der Host auf der Allowlist steht.
+   */
+  private function validatedUpdateUrl(): ?string {
+    $local = Storage::readJson('version.json');
+    $updateUrl = rtrim(trim((string)($local['update_url'] ?? '')), '/');
+    if ($updateUrl === '') return null;
+
+    $parts = parse_url($updateUrl);
+    $scheme = strtolower((string)($parts['scheme'] ?? ''));
+    $host = strtolower((string)($parts['host'] ?? ''));
+
+    if ($scheme !== 'https' || !in_array($host, self::ALLOWED_UPDATE_HOSTS, true)) {
+      return null;
+    }
+
+    return $updateUrl;
+  }
+
+  /** Wirft eine Exception, wenn eine Datei per Symlink/Traversal aus $dir ausbricht. */
+  private function assertInsideDir(string $dir): void {
+    $base = realpath($dir);
+    if ($base === false) {
+      throw new \RuntimeException('Extraktionsordner nicht lesbar.');
+    }
+    $base = str_replace('\\', '/', $base);
+    $it = new \RecursiveIteratorIterator(
+      new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)
+    );
+    foreach ($it as $item) {
+      $real = realpath($item->getPathname());
+      if ($real === false) {
+        throw new \RuntimeException('Ungueltiger Eintrag im Update-Paket.');
+      }
+      $real = str_replace('\\', '/', $real);
+      if (!str_starts_with($real, $base . '/') && $real !== $base) {
+        throw new \RuntimeException('Pfad ausserhalb des Extraktionsordners im Update-Paket.');
+      }
+    }
   }
 
   private function fetchRemoteVersion(string $url): ?array {
@@ -355,34 +420,34 @@ final class UpdateController {
 
   private function renderCheckResult(string $local, ?string $remote, bool $updateAvailable, array $changelog, string $downloadUrl, ?string $error): void {
     // Wird von SettingsController aufgerufen — gibt HTML zurueck
-    echo '<div style="margin:0 0 24px;padding:20px;border:1px solid rgba(127,127,127,.15);border-radius:8px">';
-    echo '<h3 style="margin:0 0 12px">System-Update</h3>';
+    echo '<div class="update-panel">';
+    echo '<h3 class="card-heading">System-Update</h3>';
 
     echo '<div class="cols cols-2">';
-    echo '<div><span>Installierte Version</span><br><strong style="font-size:1.2em;color:var(--color-secondary)">' . htmlspecialchars($local, ENT_QUOTES) . '</strong></div>';
+    echo '<div><span>Installierte Version</span><br><strong class="version-value">' . htmlspecialchars($local, ENT_QUOTES) . '</strong></div>';
 
     if ($error) {
-      echo '<div><span>Verfuegbare Version</span><br><span style="color:#c62828">' . htmlspecialchars($error, ENT_QUOTES) . '</span></div>';
+      echo '<div><span>Verfuegbare Version</span><br><span class="text-error">' . htmlspecialchars($error, ENT_QUOTES) . '</span></div>';
     } elseif ($remote !== null) {
-      $color = $updateAvailable ? 'color:#2e7d32;font-weight:700' : 'color:var(--color-secondary)';
-      echo '<div><span>Verfuegbare Version</span><br><strong style="font-size:1.2em;' . $color . '">' . htmlspecialchars($remote, ENT_QUOTES) . '</strong>';
-      if ($updateAvailable) echo ' <span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:4px;font-size:.8em">Neu</span>';
+      $cls = $updateAvailable ? 'version-value version-new' : 'version-value';
+      echo '<div><span>Verfuegbare Version</span><br><strong class="' . $cls . '">' . htmlspecialchars($remote, ENT_QUOTES) . '</strong>';
+      if ($updateAvailable) echo ' <span class="badge badge-green">Neu</span>';
       echo '</div>';
     }
     echo '</div>';
 
     if ($updateAvailable && $downloadUrl !== '') {
-      echo '<form method="post" action="/admin.php?a=update_run" style="margin:14px 0 0" onsubmit="return confirm(\'System auf Version ' . htmlspecialchars($remote ?? '', ENT_QUOTES) . ' aktualisieren? Benutzerdaten, Inhalte und Design bleiben erhalten.\')">';
+      echo '<form method="post" action="/admin.php?a=update_run" class="actions-top" onsubmit="return confirm(\'System auf Version ' . htmlspecialchars($remote ?? '', ENT_QUOTES) . ' aktualisieren? Benutzerdaten, Inhalte und Design bleiben erhalten.\')">';
       echo '<input type="hidden" name="_csrf" value="' . htmlspecialchars(Csrf::token(), ENT_QUOTES) . '">';
       echo '<button class="btn primary" type="submit">Update auf ' . htmlspecialchars($remote ?? '', ENT_QUOTES) . ' installieren</button>';
       echo '</form>';
     } elseif ($remote !== null && !$updateAvailable && $error === null) {
-      echo '<p style="margin:12px 0 0;color:var(--color-muted)">Das System ist auf dem neuesten Stand.</p>';
+      echo '<p class="hint-text">Das System ist auf dem neuesten Stand.</p>';
     }
 
     // Changelog anzeigen
     if ($updateAvailable && !empty($changelog)) {
-      echo '<details style="margin:14px 0 0"><summary style="cursor:pointer;font-weight:600">Changelog</summary><ul style="margin:8px 0 0;padding:0 0 0 18px">';
+      echo '<details class="admin-details"><summary>Changelog</summary><ul class="changelog-list">';
       foreach ($changelog as $entry) {
         $v = htmlspecialchars((string)($entry['version'] ?? ''), ENT_QUOTES);
         $d = htmlspecialchars((string)($entry['date'] ?? ''), ENT_QUOTES);
@@ -402,7 +467,7 @@ final class UpdateController {
     // Rollback-Button
     $backups = glob(Storage::root() . '/config/.update_backup_*');
     if ($backups) {
-      echo '<div style="margin:14px 0 0;padding:12px 0 0;border-top:1px solid rgba(127,127,127,.15)">';
+      echo '<div class="update-rollback">';
       echo '<form method="post" action="/admin.php?a=update_rollback" class="form-inline" onsubmit="return confirm(\'Zur vorherigen Version zurueckkehren?\')">';
       echo '<input type="hidden" name="_csrf" value="' . htmlspecialchars(Csrf::token(), ENT_QUOTES) . '">';
       echo '<button class="btn" type="submit">Rollback zur vorherigen Version</button>';

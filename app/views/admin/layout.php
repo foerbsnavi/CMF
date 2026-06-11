@@ -25,10 +25,10 @@ $adminNav = [
 <title><?= htmlspecialchars($title ?? 'Admin', ENT_QUOTES) ?></title>
 <link rel="stylesheet" href="/assets/css/base.css">
 <link rel="stylesheet" href="/assets/css/theme.css">
-<link rel="stylesheet" href="/assets/css/admin.css?v=2">
+<link rel="stylesheet" href="/assets/css/admin.css?v=3">
 </head>
 <body>
-<header class="admin-header"><h1 style="font-size:inherit;margin:0">CMS Admin</h1><?php if (!empty($_SESSION['_admin_user'])): ?><span class="admin-user"><?= htmlspecialchars((string)$_SESSION['_admin_user'], ENT_QUOTES) ?></span><?php endif; ?></header>
+<header class="admin-header"><h1 class="admin-title">CMS Admin</h1><?php if (!empty($_SESSION['_admin_user'])): ?><span class="admin-user"><?= htmlspecialchars((string)$_SESSION['_admin_user'], ENT_QUOTES) ?></span><?php endif; ?></header>
 
 <nav class="admin-nav" aria-label="Admin-Menü">
   <ul class="admin-nav-list">

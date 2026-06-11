@@ -24,88 +24,39 @@ final class BlogController {
       $title = htmlspecialchars((string)($p['title'] ?? ''), ENT_QUOTES);
       $status = (string)($p['status'] ?? 'draft');
       $statusLabel = htmlspecialchars($status, ENT_QUOTES);
-      $draftOpacity = $status === 'draft' ? ';opacity:.55' : '';
-      $rowStyle = " style=\"cursor:grab{$draftOpacity}\"";
+      $rowClass = $status === 'draft' ? ' class="row-draggable row-draft"' : ' class="row-draggable"';
 
-      $rows .= "<tr{$rowStyle} data-id=\"{$id}\" draggable=\"true\"><td>{$title}<br><small>{$slug}</small></td><td>{$statusLabel}</td><td class=\"actions\">"
-        . "<a class=\"btn\" href=\"/admin.php?a=blog_edit&id={$id}\">Bearbeiten</a>"
-        . "<form method=\"post\" action=\"/admin.php?a=blog_duplicate\" style=\"display:inline\">"
+      $rows .= "<tr{$rowClass} data-id=\"{$id}\" draggable=\"true\"><td>{$title}<br><small>{$slug}</small></td><td>{$statusLabel}</td><td class=\"actions\">"
+        . "<button class=\"btn row-move\" type=\"button\" data-dir=\"up\" aria-label=\"Beitrag {$title} nach oben verschieben\">▲</button>"
+        . "<button class=\"btn row-move\" type=\"button\" data-dir=\"down\" aria-label=\"Beitrag {$title} nach unten verschieben\">▼</button>"
+        . "<a class=\"btn\" href=\"/admin.php?a=blog_edit&id={$id}\" aria-label=\"Beitrag {$title} bearbeiten\">Bearbeiten</a>"
+        . "<form method=\"post\" action=\"/admin.php?a=blog_duplicate\" class=\"form-inline\">"
         . "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars($csrf, ENT_QUOTES) . "\">"
         . "<input type=\"hidden\" name=\"id\" value=\"{$id}\">"
-        . "<button class=\"btn\" type=\"submit\">Duplizieren</button>"
+        . "<button class=\"btn\" type=\"submit\" aria-label=\"Beitrag {$title} duplizieren\">Duplizieren</button>"
         . "</form>"
-        . "<form method=\"post\" action=\"/admin.php?a=blog_delete\" style=\"display:inline\" onsubmit=\"return confirm('Beitrag &quot;{$title}&quot; wirklich löschen?')\">"
+        . "<form method=\"post\" action=\"/admin.php?a=blog_delete\" class=\"form-inline\" onsubmit=\"return confirm('Beitrag &quot;{$title}&quot; wirklich löschen?')\">"
         . "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars($csrf, ENT_QUOTES) . "\">"
         . "<input type=\"hidden\" name=\"id\" value=\"{$id}\">"
-        . "<button class=\"btn\" type=\"submit\">Löschen</button>"
+        . "<button class=\"btn\" type=\"submit\" aria-label=\"Beitrag {$title} löschen\">Löschen</button>"
         . "</form>"
         . "</td></tr>";
     }
 
-    $content = "<div class=\"actions\" style=\"margin:0 0 14px 0\">"
+    $content = "<div class=\"actions\">"
       . "<a class=\"btn primary\" href=\"/admin.php?a=blog_new\">+ Neuer Beitrag</a>"
       . "</div>"
-      . "<table id=\"blog-table\"><thead><tr><th>Beitrag</th><th>Status</th><th>Aktionen</th></tr></thead><tbody>{$rows}</tbody></table>";
+      . "<table id=\"blog-table\" data-reorder-action=\"/admin.php?a=blog_reorder\" data-csrf=\"" . htmlspecialchars($csrf, ENT_QUOTES) . "\">"
+      . "<thead><tr><th>Beitrag</th><th>Status</th><th>Aktionen</th></tr></thead><tbody>{$rows}</tbody></table>";
 
-    $content .= "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars($csrf, ENT_QUOTES) . "\">";
-
-    $content .= <<<'DRAGSCRIPT'
-<script>
-(function() {
-  var table = document.getElementById('blog-table');
-  if (!table) return;
-  var tbody = table.querySelector('tbody');
-  var dragRow = null;
-
-  tbody.addEventListener('dragstart', function(e) {
-    dragRow = e.target.closest('tr');
-    if (dragRow) {
-      dragRow.style.opacity = '.4';
-      e.dataTransfer.effectAllowed = 'move';
-    }
-  });
-
-  tbody.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    var target = e.target.closest('tr');
-    if (target && target !== dragRow) {
-      var rect = target.getBoundingClientRect();
-      var mid = rect.top + rect.height / 2;
-      if (e.clientY < mid) {
-        tbody.insertBefore(dragRow, target);
-      } else {
-        tbody.insertBefore(dragRow, target.nextSibling);
-      }
-    }
-  });
-
-  tbody.addEventListener('dragend', function() {
-    if (dragRow) dragRow.style.opacity = '';
-    dragRow = null;
-    var rows = tbody.querySelectorAll('tr[data-id]');
-    var order = Array.from(rows).map(function(r) { return r.dataset.id; });
-    var csrf = document.querySelector('input[name="_csrf"]');
-    fetch('/admin.php?a=blog_reorder', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ _csrf: csrf ? csrf.value : '', order: order })
-    }).then(function(r) { return r.json(); }).then(function(d) {
-      if (d.ok) {
-        tbody.style.outline = '2px solid #2e7d32';
-        setTimeout(function() { tbody.style.outline = ''; }, 800);
-      }
-    });
-  });
-})();
-</script>
-DRAGSCRIPT;
+    $content .= PagesController::reorderScript();
 
     // Blog-Einstellungen
     $blogSlug = htmlspecialchars(trim((string)($idx['slug'] ?? 'blog')), ENT_QUOTES);
     $categoriesList = is_array($idx['categories'] ?? null) ? $idx['categories'] : [];
     $categoriesStr = htmlspecialchars(implode(', ', $categoriesList), ENT_QUOTES);
 
-    $content .= "<div style=\"margin:32px 0 0;padding:20px 0 0;border-top:1px solid rgba(127,127,127,.15)\">"
+    $content .= "<div class=\"admin-section\">"
       . "<h3>Blog-Einstellungen</h3>"
       . "<form method=\"post\" action=\"/admin.php?a=blog_settings\">"
       . "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars($csrf, ENT_QUOTES) . "\">"
@@ -115,7 +66,7 @@ DRAGSCRIPT;
       . "<div><label>Kategorien (kommagetrennt)<br><input type=\"text\" name=\"categories\" value=\"{$categoriesStr}\"></label>"
       . "<small>z.B. Neuigkeiten, Tutorials, Updates</small></div>"
       . "</div>"
-      . "<div style=\"margin:10px 0 0\"><button class=\"btn primary\" type=\"submit\">Einstellungen speichern</button></div>"
+      . "<div class=\"actions-top\"><button class=\"btn primary\" type=\"submit\">Einstellungen speichern</button></div>"
       . "</form>"
       . "</div>";
 
@@ -250,7 +201,7 @@ DRAGSCRIPT;
     $content = "<form method=\"post\" action=\"/admin.php?a=blog_save\">"
       . "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars(Csrf::token(), ENT_QUOTES) . "\">"
       . "<input type=\"hidden\" name=\"id\" value=\"" . htmlspecialchars($id, ENT_QUOTES) . "\">"
-      . "<div class=\"actions\" style=\"margin:0 0 14px 0\">"
+      . "<div class=\"actions\">"
       . "<a class=\"btn\" href=\"/admin.php?a=blog\">&larr; Zur Liste</a>"
       . "<button class=\"btn primary\" type=\"submit\">Speichern</button>"
       . "<a class=\"btn\" href=\"/{$blogSlug}/{$slug}\" target=\"_blank\" rel=\"noopener\">&Ouml;ffnen</a>"
@@ -273,7 +224,7 @@ DRAGSCRIPT;
       . "</div>"
       . "<div class=\"cols cols-2\">"
       . "<div><label>Bild (Pfad)<br><input type=\"text\" name=\"image\" value=\"{$image}\" data-field=\"blog-image\"></label>"
-      . "<div style=\"margin:6px 0\"><button type=\"button\" class=\"btn\" onclick=\"(function(){var m=JSON.parse(document.querySelector('[data-block-editor-media]')?.getAttribute('data-block-editor-media')||'[]');if(!m.length){alert('Keine Bilder vorhanden');return;}var d=document.getElementById('blog-image-picker');if(d){d.remove();return;}d=document.createElement('div');d.id='blog-image-picker';d.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:8px 0;max-height:240px;overflow:auto;border:1px solid rgba(127,127,127,.2);border-radius:8px;padding:8px';m.forEach(function(i){var b=document.createElement('button');b.type='button';b.style.cssText='border:1px solid rgba(127,127,127,.15);border-radius:6px;padding:4px;background:transparent;cursor:pointer';b.innerHTML='<img src=&quot;'+i.path+'&quot; style=&quot;width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:4px&quot;>';b.onclick=function(){document.querySelector('[name=image]').value=i.path;d.remove()};d.appendChild(b)});document.querySelector('[name=image]').parentNode.appendChild(d)})()\">Bild auswaehlen</button></div>"
+      . "<div style=\"margin:6px 0\"><button type=\"button\" class=\"btn\" onclick=\"(function(){var m=JSON.parse(document.querySelector('[data-block-editor-media]')?.getAttribute('data-block-editor-media')||'[]');if(!m.length){alert('Keine Bilder vorhanden');return;}var d=document.getElementById('blog-image-picker');if(d){d.remove();return;}d=document.createElement('div');d.id='blog-image-picker';d.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:8px 0;max-height:240px;overflow:auto;border:1px solid rgba(127,127,127,.2);border-radius:8px;padding:8px';m.forEach(function(i){var b=document.createElement('button');b.type='button';b.setAttribute('aria-label','Bild '+i.path+' auswaehlen');b.style.cssText='border:1px solid rgba(127,127,127,.15);border-radius:6px;padding:4px;background:transparent;cursor:pointer';b.innerHTML='<img src=&quot;'+i.path+'&quot; style=&quot;width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:4px&quot;>';b.onclick=function(){document.querySelector('[name=image]').value=i.path;d.remove()};d.appendChild(b)});document.querySelector('[name=image]').parentNode.appendChild(d)})()\">Bild auswaehlen</button></div>"
       . "</div>"
       . "<div><label>Beschreibung<br><textarea name=\"description\" rows=\"2\">{$description}</textarea></label></div>"
       . "</div>"
@@ -284,7 +235,7 @@ DRAGSCRIPT;
       . "<p class=\"be-help\"><strong>Block-Editor</strong> <small>Heading, Text, Bild, Liste, Buttons, Spalten, HTML</small></p>"
       . "<div class=\"block-editor-shell is-active\" data-block-editor data-block-editor-title-selector=\"input[name='title']\" data-block-editor-media=\"{$mediaJson}\"></div>"
       . "<div class=\"json-editor-shell\" data-block-editor-json-wrap>"
-      . "<p style=\"margin:14px 0 6px 0\"><strong>Post JSON</strong> <small>(Blocks + Meta)</small></p>"
+      . "<p class=\"json-editor-label\"><strong>Post JSON</strong> <small>(Blocks + Meta)</small></p>"
       . "<textarea name=\"page_json\" data-block-editor-source>" . htmlspecialchars($json, ENT_QUOTES) . "</textarea>"
       . "</div>"
       . "</form>";

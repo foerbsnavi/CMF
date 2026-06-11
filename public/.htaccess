@@ -24,9 +24,10 @@ Options -Indexes
 </IfModule>
 
 # Cache-Control Header
+# CSS/JS werden per ?v=-Query-String versioniert — immutable ist daher sicher
 <IfModule mod_headers.c>
   <FilesMatch "\.(css|js)$">
-    Header set Cache-Control "public, max-age=2592000"
+    Header set Cache-Control "public, max-age=2592000, immutable"
   </FilesMatch>
   <FilesMatch "\.(jpg|jpeg|png|gif|svg|webp|ico)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
@@ -39,7 +40,22 @@ Options -Indexes
 # URL-Rewriting
 <IfModule mod_rewrite.c>
 RewriteEngine On
+
+# HTTPS erzwingen (301) — X-Forwarded-Proto verhindert Redirect-Schleifen hinter Proxys
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+# Optional: www auf non-www umleiten — bei Bedarf einkommentieren
+# RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+# RewriteRule ^ https://%1%{REQUEST_URI} [R=301,L]
+
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Keine Skript-Ausfuehrung in Upload-/Download-Ordnern
+# ($|\.) faengt auch Multi-Extensions wie bild.php.jpg ab
+RewriteRule ^(media|files)/.+\.(php[0-9]*|phtml|phar|cgi|pl|shtml)($|\.) - [F,NC]
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ /index.php [L,QSA]

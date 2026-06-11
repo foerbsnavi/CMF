@@ -1,0 +1,3 @@
+# Sicherheitsnetz: Direktzugriff per HTTP verbieten
+# (greift nur, falls der DocumentRoot fälschlich auf den Projektstamm zeigt)
+Require all denied

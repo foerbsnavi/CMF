@@ -27,7 +27,7 @@ final class UsersController {
       if (count($users) <= 1) {
         $rows .= "<small>Letzter Benutzer</small>";
       } else {
-        $rows .= "<form method=\"post\" action=\"/admin.php?a=user_delete\" style=\"display:inline\" onsubmit=\"return confirm('Benutzer löschen?')\">"
+        $rows .= "<form method=\"post\" action=\"/admin.php?a=user_delete\" class=\"form-inline\" onsubmit=\"return confirm('Benutzer löschen?')\">"
           . "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars(Csrf::token(), ENT_QUOTES) . "\">"
           . "<input type=\"hidden\" name=\"user\" value=\"{$name}\">"
           . "<button class=\"btn\" type=\"submit\">Löschen</button>"
@@ -42,10 +42,10 @@ final class UsersController {
       $token = htmlspecialchars((string)$_SESSION['_user_api_token'], ENT_QUOTES);
       unset($_SESSION['_user_api_token']);
 
-      $flash = "<div class=\"notice\" style=\"margin-bottom:16px;padding:12px;border:1px solid rgba(127,127,127,.25);border-radius:10px\">"
+      $flash = "<div class=\"notice\">"
         . "<strong>API-Token erzeugt</strong><br>"
-        . "<code style=\"display:block;margin-top:8px;word-break:break-all\">{$token}</code>"
-        . "<small style=\"display:block;margin-top:8px\">Dieses Token wird nur jetzt angezeigt. Danach ist es weg wie ein guter Bug nach dem Fix.</small>"
+        . "<code>{$token}</code>"
+        . "<small>Dieses Token wird nur jetzt angezeigt. Danach ist es weg wie ein guter Bug nach dem Fix.</small>"
         . "</div>";
     }
 
@@ -61,11 +61,11 @@ final class UsersController {
       . "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars(Csrf::token(), ENT_QUOTES) . "\">"
       . "<label>Benutzername<br><input type=\"text\" name=\"user\" required></label>"
       . "<label>Passwort<br><input type=\"password\" name=\"pass\" required></label>"
-      . "<label style=\"display:flex;gap:10px;align-items:center;margin-top:12px\">"
+      . "<label class=\"label-row\">"
       . "<input type=\"checkbox\" name=\"api_enabled\" value=\"1\">"
       . "<span>API-Zugang anlegen</span>"
       . "</label>"
-      . "<div class=\"actions\" style=\"margin-top:14px\">"
+      . "<div class=\"actions actions-top\">"
       . "<button class=\"btn primary\" type=\"submit\">Benutzer anlegen</button>"
       . "</div>"
       . "</form>"
@@ -78,7 +78,7 @@ final class UsersController {
       . implode('', array_map(fn($u) => '<option value="' . htmlspecialchars((string)($u['user'] ?? ''), ENT_QUOTES) . '">' . htmlspecialchars((string)($u['user'] ?? ''), ENT_QUOTES) . '</option>', $users))
       . "</select></label>"
       . "<label>Neues Passwort<br><input type=\"password\" name=\"pass\" required></label>"
-      . "<div class=\"actions\" style=\"margin-top:14px\">"
+      . "<div class=\"actions actions-top\">"
       . "<button class=\"btn primary\" type=\"submit\">Passwort speichern</button>"
       . "</div>"
       . "</form>"
@@ -165,18 +165,27 @@ final class UsersController {
     $cfg = Storage::readJson('config/users.json');
     $users = $cfg['users'] ?? [];
 
+    $found = false;
     foreach ($users as &$u) {
       if ((string)($u['user'] ?? '') === $user) {
         $u['pass_hash'] = password_hash($pass, PASSWORD_DEFAULT);
+        $found = true;
         break;
       }
     }
     unset($u);
 
+    if (!$found) {
+      $_SESSION['_flash'] = 'Benutzer nicht gefunden.';
+      header('Location: /admin.php?a=users');
+      exit;
+    }
+
     $cfg['users'] = $users;
     Storage::writeJson('config/users.json', $cfg);
 
-    $_SESSION['_flash'] = 'Passwort für ' . $user . ' geändert.';
+    // Keinen Eingabe-String in der Meldung wiedergeben
+    $_SESSION['_flash'] = 'Passwort geändert.';
     header('Location: /admin.php?a=users');
     exit;
   }

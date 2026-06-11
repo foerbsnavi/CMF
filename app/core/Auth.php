@@ -118,7 +118,7 @@ final class Auth {
         .     'el.textContent="Jetzt erneut versuchen.";'
         .     'btn.disabled=false;'
         .   '}else{'
-        .     'el.textContent="' . addslashes(explode('.', $msg)[0]) . '. Noch "+s+" Sekunde"+(s===1?"":"n")+".";'
+        .     'el.textContent=' . json_encode(explode('.', $msg)[0] . '. Noch ') . '+s+" Sekunde"+(s===1?"":"n")+".";'
         .   '}'
         . '},1000);'
         . '</script>';

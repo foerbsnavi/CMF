@@ -26,7 +26,7 @@ final class MediaController {
 
       $referenceHtml = $this->renderReferenceList($refs);
       $deleteHtml = $used
-        ? '<span style="opacity:.6">gesperrt</span>'
+        ? '<span class="muted">gesperrt</span>'
         : '<form method="post" action="/admin.php?a=media_delete" onsubmit="return confirm(\'Datei wirklich löschen?\');">'
           . '<input type="hidden" name="_csrf" value="' . htmlspecialchars(Csrf::token(), ENT_QUOTES) . '">'
           . '<input type="hidden" name="path" value="' . htmlspecialchars($path, ENT_QUOTES) . '">'
@@ -36,33 +36,34 @@ final class MediaController {
       $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
       $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'], true);
       $thumb = $isImage
-        ? '<a href="' . htmlspecialchars($path, ENT_QUOTES) . '" target="_blank" rel="noopener"><img src="' . htmlspecialchars($path, ENT_QUOTES) . '" alt="" style="width:60px;height:45px;object-fit:cover;border-radius:4px;display:block"></a>'
-        : '<span style="display:inline-block;width:60px;height:45px;background:rgba(127,127,127,.1);border-radius:4px;text-align:center;line-height:45px;font-size:.7em">' . htmlspecialchars(strtoupper($ext), ENT_QUOTES) . '</span>';
+        ? '<a href="' . htmlspecialchars($path, ENT_QUOTES) . '" target="_blank" rel="noopener"><img src="' . htmlspecialchars($path, ENT_QUOTES) . '" alt="" class="media-thumb"></a>'
+        : '<span class="media-thumb-placeholder">' . htmlspecialchars(strtoupper($ext), ENT_QUOTES) . '</span>';
 
       $rows .= '<tr>'
-        . '<td style="width:70px">' . $thumb . '</td>'
+        . '<td class="col-thumb">' . $thumb . '</td>'
         . '<td><a href="' . htmlspecialchars($path, ENT_QUOTES) . '" target="_blank" rel="noopener">' . htmlspecialchars($path, ENT_QUOTES) . '</a></td>'
         . '<td><small>' . htmlspecialchars((string)$file['size'], ENT_QUOTES) . '</small></td>'
         . '<td><small>' . htmlspecialchars((string)$file['modified'], ENT_QUOTES) . '</small></td>'
         . '<td>' . $usageLabel . $referenceHtml . '</td>'
-        . '<td style="white-space:nowrap">' . $deleteHtml . '</td>'
+        . '<td class="nowrap">' . $deleteHtml . '</td>'
         . '</tr>';
     }
 
     if ($rows === '') {
-      $rows = '<tr><td colspan="5"><small>Keine Medien gefunden.</small></td></tr>';
+      $rows = '<tr><td colspan="6"><small>Keine Medien gefunden.</small></td></tr>';
     }
 
     $content = $this->flashHtml()
       . '<form method="post" action="/admin.php?a=media_upload" enctype="multipart/form-data">'
       . '<input type="hidden" name="_csrf" value="' . htmlspecialchars(Csrf::token(), ENT_QUOTES) . '">'
-      . '<div class="actions" style="margin:0 0 14px 0">'
-      . '<input type="file" name="file" required>'
+      . '<div class="actions">'
+      . '<label class="sr-only" for="media-file">Datei für Upload auswählen</label>'
+      . '<input type="file" id="media-file" name="file" required>'
       . '<button class="btn primary" type="submit">Upload</button>'
       . '<a class="btn" href="/admin.php?a=media_audit">Auf Einbindung prüfen</a>'
       . '</div>'
       . '</form>'
-      . '<table><thead><tr><th></th><th>Datei</th><th>Bytes</th><th>Geändert</th><th>Einbindung</th><th style="white-space:nowrap">Aktion</th></tr></thead><tbody>' . $rows . '</tbody></table>';
+      . '<table><thead><tr><th><span class="sr-only">Vorschau</span></th><th>Datei</th><th>Bytes</th><th>Geändert</th><th>Einbindung</th><th class="nowrap">Aktion</th></tr></thead><tbody>' . $rows . '</tbody></table>';
 
     $this->render('Media', $content);
   }
@@ -95,7 +96,7 @@ final class MediaController {
     }
 
     $content = $this->flashHtml()
-      . '<div class="actions" style="margin:0 0 14px 0">'
+      . '<div class="actions">'
       . '<a class="btn" href="/admin.php?a=media">← Zur Medienliste</a>'
       . '</div>'
       . '<p><strong>Unbenutzte Medien:</strong> ' . count($unused) . ' von ' . count($audit['files']) . '</p>'
@@ -158,6 +159,10 @@ final class MediaController {
       http_response_code(500);
       echo 'Move failed';
       exit;
+    }
+
+    if ($ext === 'svg') {
+      \App\Core\Sanitizer::svgFile($dest);
     }
 
     $this->redirect('/admin.php?a=media&msg=uploaded');
@@ -356,7 +361,7 @@ final class MediaController {
       $items .= '<li><small>' . htmlspecialchars((string)$ref['source'], ENT_QUOTES) . ' → ' . htmlspecialchars((string)$ref['location'], ENT_QUOTES) . '</small></li>';
     }
 
-    return '<ul style="margin:8px 0 0 18px;padding:0">' . $items . '</ul>';
+    return '<ul class="media-detail-list">' . $items . '</ul>';
   }
 
   private function flashHtml(): string {

@@ -24,25 +24,25 @@ final class SettingsController {
     $analysisHtml = '';
 
     if (is_array($analysis)) {
-      $analysisHtml = '<div class="card" style="margin:16px 0">'
-        . '<h3 style="margin:0 0 14px">ZIP-Inhalt</h3>'
+      $analysisHtml = '<div class="card card-spaced">'
+        . '<h3 class="card-heading">ZIP-Inhalt</h3>'
         . '<form method="post" action="/admin.php?a=settings_import_run">'
         . '<input type="hidden" name="_csrf" value="' . htmlspecialchars($csrf, ENT_QUOTES) . '">';
 
       if ($analysis['header']) {
-        $analysisHtml .= '<label style="display:flex;gap:10px;align-items:center;margin:8px 0">'
+        $analysisHtml .= '<label class="label-row">'
           . '<input type="checkbox" name="import_header" value="1" checked> Header</label>';
       }
       if ($analysis['footer']) {
-        $analysisHtml .= '<label style="display:flex;gap:10px;align-items:center;margin:8px 0">'
+        $analysisHtml .= '<label class="label-row">'
           . '<input type="checkbox" name="import_footer" value="1" checked> Footer</label>';
       }
       if ($analysis['pages_count'] > 0) {
-        $analysisHtml .= '<label style="display:flex;gap:10px;align-items:center;margin:8px 0">'
+        $analysisHtml .= '<label class="label-row">'
           . '<input type="checkbox" name="import_pages" value="1" checked> '
           . htmlspecialchars((string)$analysis['pages_count'], ENT_QUOTES) . ' Seiten</label>';
         if (!empty($analysis['page_titles'])) {
-          $analysisHtml .= '<ul style="margin:0 0 8px 30px;font-size:.85em;color:#555">';
+          $analysisHtml .= '<ul class="import-sublist">';
           foreach ($analysis['page_titles'] as $pt) {
             $analysisHtml .= '<li>' . htmlspecialchars((string)$pt, ENT_QUOTES) . '</li>';
           }
@@ -50,12 +50,12 @@ final class SettingsController {
         }
       }
       if ($analysis['media_count'] > 0) {
-        $analysisHtml .= '<label style="display:flex;gap:10px;align-items:center;margin:8px 0">'
+        $analysisHtml .= '<label class="label-row">'
           . '<input type="checkbox" name="import_media" value="1" checked> '
           . htmlspecialchars((string)$analysis['media_count'], ENT_QUOTES) . ' Mediendateien</label>';
       }
 
-      $analysisHtml .= '<div class="actions" style="margin:14px 0 0">'
+      $analysisHtml .= '<div class="actions actions-top">'
         . '<button class="btn primary" type="submit">Import starten</button>'
         . '<a class="btn" href="/admin.php?a=settings_import_cancel">Abbrechen</a>'
         . '</div></form></div>';
@@ -68,26 +68,27 @@ final class SettingsController {
     $updateHtml = ob_get_clean();
 
     $content = $updateHtml
-      . '<hr style="border:0;border-top:1px solid rgba(127,127,127,.15);margin:28px 0">'
+      . '<hr class="divider">'
       . '<h2>Export</h2>'
       . '<p>Erstelle ein ZIP-Backup mit den gewünschten Bereichen.</p>'
       . '<form method="post" action="/admin.php?a=settings_export">'
       . '<input type="hidden" name="_csrf" value="' . htmlspecialchars($csrf, ENT_QUOTES) . '">'
-      . '<div style="margin:12px 0">'
-      . '<label style="display:flex;gap:10px;align-items:center;margin:8px 0"><input type="checkbox" name="export_header" value="1" checked> Header</label>'
-      . '<label style="display:flex;gap:10px;align-items:center;margin:8px 0"><input type="checkbox" name="export_footer" value="1" checked> Footer</label>'
-      . '<label style="display:flex;gap:10px;align-items:center;margin:8px 0"><input type="checkbox" name="export_pages" value="1" checked> Seiten</label>'
-      . '<label style="display:flex;gap:10px;align-items:center;margin:8px 0"><input type="checkbox" name="export_media" value="1" checked> Medien</label>'
+      . '<div class="form-options">'
+      . '<label class="label-row"><input type="checkbox" name="export_header" value="1" checked> Header</label>'
+      . '<label class="label-row"><input type="checkbox" name="export_footer" value="1" checked> Footer</label>'
+      . '<label class="label-row"><input type="checkbox" name="export_pages" value="1" checked> Seiten</label>'
+      . '<label class="label-row"><input type="checkbox" name="export_media" value="1" checked> Medien</label>'
       . '</div>'
       . '<button class="btn primary" type="submit">ZIP exportieren</button>'
       . '</form>'
-      . '<hr style="margin:28px 0;border:0;border-top:1px solid rgba(127,127,127,.15)">'
+      . '<hr class="divider">'
       . '<h2>Import</h2>'
       . '<p>Lade ein ZIP-Backup hoch. Vorhandene Inhalte werden aktualisiert, neue erstellt. Es wird nichts gelöscht.</p>'
       . '<form method="post" action="/admin.php?a=settings_import_analyze" enctype="multipart/form-data">'
       . '<input type="hidden" name="_csrf" value="' . htmlspecialchars($csrf, ENT_QUOTES) . '">'
-      . '<div class="actions" style="margin:12px 0">'
-      . '<input type="file" name="zip" accept=".zip" required>'
+      . '<div class="actions form-options">'
+      . '<label class="sr-only" for="import-zip">ZIP-Backup-Datei auswählen</label>'
+      . '<input type="file" id="import-zip" name="zip" accept=".zip" required>'
       . '<button class="btn primary" type="submit">ZIP analysieren</button>'
       . '</div>'
       . '</form>'
@@ -192,6 +193,15 @@ final class SettingsController {
     $zip->extractTo($extractDir);
     $zip->close();
 
+    // Zweite Verteidigungslinie: entpackte Pfade muessen per realpath
+    // innerhalb des Extraktionsordners liegen (Symlink-/Traversal-Schutz)
+    if (!$this->dirIsClean($extractDir)) {
+      $this->deleteDir($extractDir);
+      $_SESSION['_flash'] = 'Import abgebrochen: Ungueltige Pfade im ZIP.';
+      header('Location: /admin.php?a=settings');
+      exit;
+    }
+
     // Analyse
     $analysis = [
       'header' => is_file($extractDir . '/content/globals/header.json'),
@@ -240,12 +250,23 @@ final class SettingsController {
     }
 
     $extractDir = (string)$analysis['extract_dir'];
-    if (!is_dir($extractDir)) {
+
+    // Pfad aus der Session erneut validieren: muss ein cmf_import_-Ordner
+    // innerhalb des System-Temp-Verzeichnisses sein
+    $tempBase = str_replace('\\', '/', (string)realpath(sys_get_temp_dir()));
+    $realExtract = is_dir($extractDir) ? str_replace('\\', '/', (string)realpath($extractDir)) : '';
+    $isValid = $tempBase !== ''
+      && $realExtract !== ''
+      && str_starts_with($realExtract, $tempBase . '/')
+      && str_starts_with(basename($realExtract), 'cmf_import_');
+
+    if (!$isValid) {
       unset($_SESSION['_import_analysis']);
       $_SESSION['_flash'] = 'Import-Daten nicht mehr verfügbar.';
       header('Location: /admin.php?a=settings');
       exit;
     }
+    $extractDir = $realExtract;
 
     $root = Storage::root();
     $imported = [];
@@ -280,8 +301,9 @@ final class SettingsController {
         $currentIds = array_map(fn($p) => (string)($p['id'] ?? ''), $currentPages);
 
         foreach ($importPages as $ip) {
-          $id = (string)($ip['id'] ?? '');
-          if ($id === '') continue;
+          $id = trim((string)($ip['id'] ?? ''));
+          // ID streng validieren — wird als Dateiname verwendet (Path-Traversal-Schutz)
+          if ($id === '' || !preg_match('/^[a-z0-9][a-z0-9\-_]{0,63}$/', $id)) continue;
 
           // Seiten-JSON kopieren
           $srcPage = $extractDir . '/content/pages/' . $id . '.json';
@@ -313,19 +335,31 @@ final class SettingsController {
       $mediaDir = $extractDir . '/media';
       if (is_dir($mediaDir)) {
         $count = 0;
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $allowed = ['jpg','jpeg','png','webp','gif','svg','pdf','mp4','mp3','wav'];
+        $allowedMimes = [
+          'image/jpeg','image/png','image/webp','image/gif','image/svg+xml',
+          'text/plain','text/xml','application/xml', // SVG-Varianten
+          'application/pdf','video/mp4','audio/mpeg','audio/mp3','audio/wav','audio/x-wav'
+        ];
         $it = new \RecursiveIteratorIterator(
           new \RecursiveDirectoryIterator($mediaDir, \FilesystemIterator::SKIP_DOTS)
         );
         foreach ($it as $f) {
           if (!$f->isFile()) continue;
           $ext = strtolower(pathinfo($f->getFilename(), PATHINFO_EXTENSION));
-          $allowed = ['jpg','jpeg','png','webp','gif','svg','pdf','mp4','mp3','wav'];
           if (!in_array($ext, $allowed, true)) continue;
+          // Echten MIME-Typ pruefen, nicht nur die Endung
+          $mime = $finfo->file($f->getPathname());
+          if ($mime === false || !in_array($mime, $allowedMimes, true)) continue;
           $rel = str_replace('\\', '/', str_replace($mediaDir, '', $f->getPathname()));
           $dest = $root . '/public/media' . $rel;
           $destDir = dirname($dest);
           if (!is_dir($destDir)) mkdir($destDir, 0775, true);
           copy($f->getPathname(), $dest);
+          if ($ext === 'svg') {
+            \App\Core\Sanitizer::svgFile($dest);
+          }
           $count++;
         }
         $imported[] = $count . ' Medien';
@@ -351,6 +385,23 @@ final class SettingsController {
     unset($_SESSION['_import_analysis']);
     header('Location: /admin.php?a=settings');
     exit;
+  }
+
+  /** Prueft, ob alle Eintraege per realpath innerhalb von $dir liegen. */
+  private function dirIsClean(string $dir): bool {
+    $base = realpath($dir);
+    if ($base === false) return false;
+    $base = str_replace('\\', '/', $base);
+    $it = new \RecursiveIteratorIterator(
+      new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)
+    );
+    foreach ($it as $item) {
+      $real = realpath($item->getPathname());
+      if ($real === false) return false;
+      $real = str_replace('\\', '/', $real);
+      if (!str_starts_with($real, $base . '/') && $real !== $base) return false;
+    }
+    return true;
   }
 
   private function deleteDir(string $dir): void {

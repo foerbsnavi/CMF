@@ -603,6 +603,17 @@ footer a:hover {
   border: 0;
 }
 
+/* :focus als Fallback fuer Browser ohne :focus-visible,
+   :focus:not(:focus-visible) nimmt das Outline bei Mausklick zurueck */
+:focus {
+  outline: 2px solid var(--color-primary, #ea6b17);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-primary, #ea6b17);
   outline-offset: 2px;

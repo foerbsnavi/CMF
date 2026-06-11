@@ -38,13 +38,16 @@ final class Renderer {
 
     $head = self::head($title, $desc, $lang, $siteName, $canonical, $ogImage, $robots);
 
+    $siteJsFile = Storage::root() . '/public/assets/js/site.js';
+    $siteJsV = is_file($siteJsFile) ? (string)filemtime($siteJsFile) : '1';
+
     return "<!doctype html><html lang=\"" . self::e($lang) . "\"><head>{$head}</head><body>"
       . "<a class=\"skip-link\" href=\"#main-content\">Zum Inhalt springen</a>"
       . "<header>{$headerHtml}</header>"
       . "<nav aria-label=\"Hauptnavigation\">{$navHtml}</nav>"
       . "<main id=\"main-content\">{$mainHtml}</main>"
       . "<footer>{$footerHtml}</footer>"
-      . "<script src=\"/assets/js/site.js?v=" . (string)@filemtime(Storage::root() . '/public/assets/js/site.js') . "\" defer></script>"
+      . "<script src=\"/assets/js/site.js?v=" . $siteJsV . "\" defer></script>"
       . "</body></html>";
   }
 
@@ -170,7 +173,8 @@ final class Renderer {
       $childrenHtml = self::renderNavLevel($slug, $byParent, $id);
       $hasChildren = $childrenHtml !== '';
       $isCurrent = $itemSlug === $slug;
-      $isAncestor = !$isCurrent && self::navTreeContainsSlug($byParent, $id, $slug);
+      $isAncestor = !$isCurrent && (self::navTreeContainsSlug($byParent, $id, $slug)
+        || ($itemSlug !== '' && $itemSlug !== 'home' && str_starts_with($slug, $itemSlug . '/')));
       $currentAttr = $isCurrent ? ' aria-current="page"' : ($isAncestor ? ' aria-current="true"' : '');
       $liClass = $hasChildren ? ' class="nav-item has-children"' : ' class="nav-item"';
 
@@ -247,7 +251,10 @@ final class Renderer {
     $alt = self::e((string)($d['alt'] ?? ''));
     $cap = trim((string)($d['caption'] ?? ''));
     $loading = self::e((string)($d['loading'] ?? 'lazy'));
-    $img = "<img src=\"{$src}\" alt=\"{$alt}\" loading=\"{$loading}\">";
+    $w = (int)($d['width'] ?? 0);
+    $h = (int)($d['height'] ?? 0);
+    $dim = ($w > 0 && $h > 0) ? " width=\"{$w}\" height=\"{$h}\"" : '';
+    $img = "<img src=\"{$src}\" alt=\"{$alt}\"{$dim} loading=\"{$loading}\">";
     if ($cap !== '') return "<div><figure>{$img}<figcaption>" . self::e($cap) . "</figcaption></figure></div>";
     return "<div>{$img}</div>";
   }
@@ -312,10 +319,10 @@ final class Renderer {
       $href = '/' . $blogSlug . '/' . $slug;
 
       $imgHtml = $image !== ''
-        ? '<div class="blog-card-image"><img src="' . $image . '" alt="' . $title . '" loading="lazy"></div>'
+        ? '<div class="blog-card-image"><img src="' . $image . '" alt="" loading="lazy"></div>'
         : '';
 
-      $cards .= '<a class="blog-card" href="' . $href . '">'
+      $cards .= '<a class="blog-card" href="' . $href . '" aria-label="' . $title . '">'
         . $imgHtml
         . '<div class="blog-card-body">'
         . '<h3 class="blog-card-title">' . $title . '</h3>'

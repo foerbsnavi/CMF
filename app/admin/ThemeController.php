@@ -29,7 +29,7 @@ final class ThemeController {
 
     $content = "<form method=\"post\" action=\"/admin.php?a=theme_save\">"
       . "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars(Csrf::token(), ENT_QUOTES) . "\">"
-      . "<div class=\"actions\" style=\"margin:0 0 14px 0\">"
+      . "<div class=\"actions\">"
       . "<button class=\"btn primary\" type=\"submit\">Theme speichern</button>"
       . "<a class=\"btn\" href=\"/\" target=\"_blank\" rel=\"noopener\">Frontend prüfen</a>"
       . "</div>"
@@ -96,8 +96,9 @@ final class ThemeController {
       // Custom CSS
       . "<div class=\"theme-group\">"
       . "<h3>Custom CSS</h3>"
-      . "<p style=\"margin:0 0 10px;opacity:.7;font-size:.9em\">Eigene CSS-Regeln und wiederverwendbare Klassen fuer HTML-Bloecke. Wird nach theme.css geladen.</p>"
-      . "<textarea name=\"custom_css\" style=\"min-height:300px\">" . htmlspecialchars(GlobalsController::readCustomCss(), ENT_QUOTES) . "</textarea>"
+      . "<p class=\"field-hint\">Eigene CSS-Regeln und wiederverwendbare Klassen fuer HTML-Bloecke. Wird nach theme.css geladen.</p>"
+      . "<label class=\"sr-only\" for=\"custom-css\">Custom CSS</label>"
+      . "<textarea id=\"custom-css\" name=\"custom_css\">" . htmlspecialchars(GlobalsController::readCustomCss(), ENT_QUOTES) . "</textarea>"
       . "</div>"
 
       . "</form>";
@@ -159,10 +160,10 @@ final class ThemeController {
     $eLabel = htmlspecialchars($label, ENT_QUOTES);
     $eValue = htmlspecialchars($value, ENT_QUOTES);
     return "<div class=\"theme-field\">"
-      . "<label>{$eLabel}</label>"
+      . "<label for=\"field-{$eName}\">{$eLabel}</label>"
       . "<div class=\"theme-color-wrap\">"
       . "<input type=\"color\" value=\"{$eValue}\" oninput=\"this.nextElementSibling.value=this.value\" aria-label=\"{$eLabel} Farbwahl\">"
-      . "<input type=\"text\" name=\"{$eName}\" value=\"{$eValue}\" oninput=\"this.previousElementSibling.value=this.value\">"
+      . "<input type=\"text\" id=\"field-{$eName}\" name=\"{$eName}\" value=\"{$eValue}\" oninput=\"this.previousElementSibling.value=this.value\">"
       . "</div>"
       . "</div>";
   }
@@ -172,8 +173,8 @@ final class ThemeController {
     $eLabel = htmlspecialchars($label, ENT_QUOTES);
     $eValue = htmlspecialchars($value, ENT_QUOTES);
     return "<div class=\"theme-field\">"
-      . "<label>{$eLabel}</label>"
-      . "<input type=\"text\" name=\"{$eName}\" value=\"{$eValue}\">"
+      . "<label for=\"field-{$eName}\">{$eLabel}</label>"
+      . "<input type=\"text\" id=\"field-{$eName}\" name=\"{$eName}\" value=\"{$eValue}\">"
       . "</div>";
   }
 
@@ -187,8 +188,8 @@ final class ThemeController {
       $opts .= "<option value=\"{$eOpt}\"{$selected}>{$eOpt}</option>";
     }
     return "<div class=\"theme-field\">"
-      . "<label>{$eLabel}</label>"
-      . "<select name=\"{$eName}\">{$opts}</select>"
+      . "<label for=\"field-{$eName}\">{$eLabel}</label>"
+      . "<select id=\"field-{$eName}\" name=\"{$eName}\">{$opts}</select>"
       . "</div>";
   }
 

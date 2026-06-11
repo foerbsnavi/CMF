@@ -90,7 +90,17 @@ Login: `/admin.php`. Bereiche: Seiten, Blog, Header/Footer, Theme, Media, Benutz
 
 ## Sicherheit
 
-CSRF-Schutz, Passwort-Hashes, API-Token-Hash, HTML-Sanitizing fuer Textbloecke.
+CSRF-Schutz, Passwort-Hashes, API-Token-Hash, HTML-Sanitizing fuer Textbloecke,
+SVG-Bereinigung beim Upload, Schutz-.htaccess fuer `config/` und `content/`.
+
+---
+
+## Hinweise zur Installation
+
+- Installationsanleitung: https://cmf.brosemedien.de/installationsanleitung
+- Das Paket enthaelt bewusst **keine Favicons** — eigene Dateien
+  (`favicon.ico`, `apple-touch-icon.png`, `site.webmanifest` etc.)
+  einfach in `public/` ablegen.
 
 ---
 

@@ -53,7 +53,7 @@ final class Theme {
     $root = '';
     foreach ($vars as $k => $v) $root .= $k . ':' . $v . ';';
 
-    $css = self::fontFaceCss()
+    $css = self::fontFaceCss([$fonts['body'], $fonts['heading']])
       . ":root{{$root}}"
       . "body{background-color:var(--color-bg);color:var(--color-text);font-size:var(--font-size);font-family:var(--font-body);font-weight:var(--font-body-weight)}"
       . "button,input,select,textarea{font:inherit}"
@@ -124,11 +124,26 @@ final class Theme {
     return array_values($out);
   }
 
-  private static function fontFaceCss(): string {
+  /**
+   * Erzeugt @font-face-Regeln NUR fuer die aktiv konfigurierten Familien.
+   * Alle Fonts im Verzeichnis bleiben als Auswahl-Pool fuer den Admin,
+   * landen aber nicht im kritischen CSS-Pfad jeder Seite.
+   */
+  private static function fontFaceCss(array $activeFamilies): string {
+    $active = [];
+    foreach ($activeFamilies as $family) {
+      $family = strtolower(trim((string)$family));
+      if ($family !== '') $active[] = $family;
+    }
+    if ($active === []) return '';
+
     $css = '';
     $seen = [];
 
     foreach (self::availableFonts() as $font) {
+      if (!in_array(strtolower($font['family']), $active, true)) {
+        continue;
+      }
       $signature = strtolower($font['family'] . '|' . $font['weight'] . '|' . $font['style'] . '|' . $font['path']);
       if (isset($seen[$signature])) {
         continue;

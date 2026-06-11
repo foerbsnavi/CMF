@@ -12,6 +12,9 @@ final class Sitemap {
 
     self::writeSitemap($baseUrl, $pages);
     self::writeRobots($baseUrl);
+    // Such-Index als statische Datei mitgenerieren — die Content-Dateien
+    // sind durch den Storage-Cache in diesem Request bereits gelesen
+    SearchIndex::write();
   }
 
   private static function writeSitemap(string $baseUrl, array $pages): void {
@@ -26,8 +29,7 @@ final class Sitemap {
       if (str_contains($robots, 'noindex')) continue;
       $slug = (string)($p['slug'] ?? '');
       $url = $slug === 'home' ? $baseUrl . '/' : $baseUrl . '/' . $slug;
-      $updated = (string)($p['updated'] ?? '');
-      $lastmod = $updated !== '' ? substr($updated, 0, 10) : '';
+      $lastmod = self::lastmod((string)($p['updated'] ?? ''), 'content/pages/' . ($p['id'] ?? '') . '.json');
       $priority = $slug === 'home' ? '1.0' : '0.8';
 
       $xml .= "  <url>\n"
@@ -48,8 +50,7 @@ final class Sitemap {
       if (str_contains($bpRobots, 'noindex')) continue;
       $bpSlug = (string)($bp['slug'] ?? '');
       $bpUrl = $baseUrl . '/' . $blogPrefix . '/' . $bpSlug;
-      $bpUpdated = (string)($bp['updated'] ?? '');
-      $bpLastmod = $bpUpdated !== '' ? substr($bpUpdated, 0, 10) : '';
+      $bpLastmod = self::lastmod((string)($bp['updated'] ?? ''), 'content/blog/' . ($bp['id'] ?? '') . '.json');
 
       $xml .= "  <url>\n"
         . "    <loc>" . htmlspecialchars($bpUrl, ENT_XML1 | ENT_QUOTES, 'UTF-8') . "</loc>\n"
@@ -67,9 +68,22 @@ final class Sitemap {
     rename($tmp, $path);
   }
 
+  /**
+   * lastmod aus Index-Datum und Datei-Aenderungszeit der Content-Datei —
+   * reine Inhaltsaenderungen aktualisieren das Index-Datum nicht immer,
+   * der Datei-Timestamp faengt das ab.
+   */
+  private static function lastmod(string $updated, string $contentFile): string {
+    $fromIndex = $updated !== '' ? substr($updated, 0, 10) : '';
+    $file = Storage::root() . '/' . $contentFile;
+    $fromFile = is_file($file) ? date('Y-m-d', (int)filemtime($file)) : '';
+    // String-Vergleich funktioniert fuer Y-m-d
+    return max($fromIndex, $fromFile);
+  }
+
   private static function writeRobots(string $baseUrl): void {
     $sitemap = $baseUrl !== '' ? "Sitemap: {$baseUrl}/sitemap.xml\n" : '';
-    $txt = "User-agent: *\nAllow: /\n{$sitemap}";
+    $txt = "User-agent: *\nDisallow: /admin.php\nDisallow: /api.php\n{$sitemap}";
 
     $path = Storage::root() . '/public/robots.txt';
     $tmp = $path . '.tmp.' . bin2hex(random_bytes(4));

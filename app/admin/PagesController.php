@@ -27,66 +27,96 @@ final class PagesController {
     $csrf = Csrf::token();
     $rows = $this->renderPageRows($byParent, '__root__', 0, $csrf);
 
-    $content = "<div class=\"actions\" style=\"margin:0 0 14px 0\">"
+    $content = "<div class=\"actions\">"
       . "<a class=\"btn primary\" href=\"/admin.php?a=page_new\">+ Neue Seite</a>"
       . "</div>"
-      . "<table id=\"pages-table\"><thead><tr><th>Seite</th><th>Status</th><th>Aktionen</th></tr></thead><tbody>{$rows}</tbody></table>";
+      . "<table id=\"pages-table\" data-reorder-action=\"/admin.php?a=page_reorder\" data-csrf=\"" . htmlspecialchars($csrf, ENT_QUOTES) . "\">"
+      . "<thead><tr><th>Seite</th><th>Status</th><th>Aktionen</th></tr></thead><tbody>{$rows}</tbody></table>";
 
-    $content .= "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars($csrf, ENT_QUOTES) . "\">";
+    $content .= self::reorderScript();
 
-    $content .= <<<'DRAGSCRIPT'
+    $this->render('Seiten', $content);
+  }
+
+  /**
+   * Gemeinsames Sortier-Script fuer Seiten- und Blog-Liste:
+   * Drag-and-Drop plus Hoch/Runter-Buttons als Tastatur-Alternative.
+   * Wirkt auf alle Tabellen mit data-reorder-action.
+   */
+  public static function reorderScript(): string {
+    return <<<'DRAGSCRIPT'
 <script>
 (function() {
-  var table = document.getElementById('pages-table');
-  if (!table) return;
-  var tbody = table.querySelector('tbody');
-  var dragRow = null;
+  document.querySelectorAll('table[data-reorder-action]').forEach(function(table) {
+    var tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    var action = table.dataset.reorderAction;
+    var csrf = table.dataset.csrf || '';
+    var dragRow = null;
 
-  tbody.addEventListener('dragstart', function(e) {
-    dragRow = e.target.closest('tr');
-    if (dragRow) {
-      dragRow.style.opacity = '.4';
-      e.dataTransfer.effectAllowed = 'move';
+    function sendOrder() {
+      var rows = tbody.querySelectorAll('tr[data-id]');
+      var order = Array.from(rows).map(function(r) { return r.dataset.id; });
+      fetch(action, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ _csrf: csrf, order: order })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) {
+          tbody.style.outline = '2px solid #2e7d32';
+          setTimeout(function() { tbody.style.outline = ''; }, 800);
+        }
+      });
     }
-  });
 
-  tbody.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    var target = e.target.closest('tr');
-    if (target && target !== dragRow) {
-      var rect = target.getBoundingClientRect();
-      var mid = rect.top + rect.height / 2;
-      if (e.clientY < mid) {
-        tbody.insertBefore(dragRow, target);
+    tbody.addEventListener('dragstart', function(e) {
+      dragRow = e.target.closest('tr');
+      if (dragRow) {
+        dragRow.style.opacity = '.4';
+        e.dataTransfer.effectAllowed = 'move';
+      }
+    });
+
+    tbody.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      var target = e.target.closest('tr');
+      if (target && target !== dragRow) {
+        var rect = target.getBoundingClientRect();
+        var mid = rect.top + rect.height / 2;
+        if (e.clientY < mid) {
+          tbody.insertBefore(dragRow, target);
+        } else {
+          tbody.insertBefore(dragRow, target.nextSibling);
+        }
+      }
+    });
+
+    tbody.addEventListener('dragend', function() {
+      if (dragRow) dragRow.style.opacity = '';
+      dragRow = null;
+      sendOrder();
+    });
+
+    // Tastatur-Alternative: Hoch/Runter-Buttons
+    tbody.addEventListener('click', function(e) {
+      var btn = e.target.closest('.row-move');
+      if (!btn) return;
+      var row = btn.closest('tr');
+      if (!row) return;
+      if (btn.dataset.dir === 'up' && row.previousElementSibling) {
+        tbody.insertBefore(row, row.previousElementSibling);
+      } else if (btn.dataset.dir === 'down' && row.nextElementSibling) {
+        tbody.insertBefore(row.nextElementSibling, row);
       } else {
-        tbody.insertBefore(dragRow, target.nextSibling);
+        return;
       }
-    }
-  });
-
-  tbody.addEventListener('dragend', function() {
-    if (dragRow) dragRow.style.opacity = '';
-    dragRow = null;
-    // Neue Reihenfolge senden
-    var rows = tbody.querySelectorAll('tr[data-id]');
-    var order = Array.from(rows).map(function(r) { return r.dataset.id; });
-    var csrf = document.querySelector('input[name="_csrf"]');
-    fetch('/admin.php?a=page_reorder', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ _csrf: csrf ? csrf.value : '', order: order })
-    }).then(function(r) { return r.json(); }).then(function(d) {
-      if (d.ok) {
-        tbody.style.outline = '2px solid #2e7d32';
-        setTimeout(function() { tbody.style.outline = ''; }, 800);
-      }
+      btn.focus();
+      sendOrder();
     });
   });
 })();
 </script>
 DRAGSCRIPT;
-
-    $this->render('Seiten', $content);
   }
 
   private function renderPageRows(array $byParent, string $parentKey, int $depth, string $csrf): string {
@@ -101,20 +131,21 @@ DRAGSCRIPT;
       $statusLabel = htmlspecialchars($status, ENT_QUOTES);
       $indent = str_repeat('&nbsp;&nbsp;&nbsp;&nbsp;', $depth);
       $prefix = $depth > 0 ? '└ ' : '';
-      $draftOpacity = $status === 'draft' ? ';opacity:.55' : '';
-      $rowStyle = " style=\"cursor:grab{$draftOpacity}\"";
+      $rowClass = $status === 'draft' ? ' class="row-draggable row-draft"' : ' class="row-draggable"';
 
-      $rows .= "<tr{$rowStyle} data-id=\"{$id}\" draggable=\"true\"><td>{$indent}{$prefix}{$title}<br>{$indent}<small>{$slug}</small></td><td>{$statusLabel}</td><td class=\"actions\">"
-        . "<a class=\"btn\" href=\"/admin.php?a=page_edit&id={$id}\">Bearbeiten</a>"
-        . "<form method=\"post\" action=\"/admin.php?a=page_duplicate\" style=\"display:inline\">"
+      $rows .= "<tr{$rowClass} data-id=\"{$id}\" draggable=\"true\"><td>{$indent}{$prefix}{$title}<br>{$indent}<small>{$slug}</small></td><td>{$statusLabel}</td><td class=\"actions\">"
+        . "<button class=\"btn row-move\" type=\"button\" data-dir=\"up\" aria-label=\"Seite {$title} nach oben verschieben\">▲</button>"
+        . "<button class=\"btn row-move\" type=\"button\" data-dir=\"down\" aria-label=\"Seite {$title} nach unten verschieben\">▼</button>"
+        . "<a class=\"btn\" href=\"/admin.php?a=page_edit&id={$id}\" aria-label=\"Seite {$title} bearbeiten\">Bearbeiten</a>"
+        . "<form method=\"post\" action=\"/admin.php?a=page_duplicate\" class=\"form-inline\">"
         . "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars($csrf, ENT_QUOTES) . "\">"
         . "<input type=\"hidden\" name=\"id\" value=\"{$id}\">"
-        . "<button class=\"btn\" type=\"submit\">Duplizieren</button>"
+        . "<button class=\"btn\" type=\"submit\" aria-label=\"Seite {$title} duplizieren\">Duplizieren</button>"
         . "</form>"
-        . "<form method=\"post\" action=\"/admin.php?a=page_delete\" style=\"display:inline\" onsubmit=\"return confirm('Seite &quot;{$title}&quot; wirklich löschen?')\">"
+        . "<form method=\"post\" action=\"/admin.php?a=page_delete\" class=\"form-inline\" onsubmit=\"return confirm('Seite &quot;{$title}&quot; wirklich löschen?')\">"
         . "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars($csrf, ENT_QUOTES) . "\">"
         . "<input type=\"hidden\" name=\"id\" value=\"{$id}\">"
-        . "<button class=\"btn\" type=\"submit\">Löschen</button>"
+        . "<button class=\"btn\" type=\"submit\" aria-label=\"Seite {$title} löschen\">Löschen</button>"
         . "</form>"
         . "</td></tr>";
 
@@ -225,7 +256,7 @@ DRAGSCRIPT;
     $content = "<form method=\"post\" action=\"/admin.php?a=page_save\">"
       . "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars(Csrf::token(), ENT_QUOTES) . "\">"
       . "<input type=\"hidden\" name=\"id\" value=\"" . htmlspecialchars($id, ENT_QUOTES) . "\">"
-      . "<div class=\"actions\" style=\"margin:0 0 14px 0\">"
+      . "<div class=\"actions\">"
       . "<a class=\"btn\" href=\"/admin.php?a=pages\">← Zur Liste</a>"
       . "<button class=\"btn primary\" type=\"submit\">Speichern</button>"
       . "<a class=\"btn\" href=\"/" . ($slug === 'home' ? '' : $slug) . "\" target=\"_blank\" rel=\"noopener\">Öffnen</a>"
@@ -264,7 +295,7 @@ DRAGSCRIPT;
       . "<p class=\"be-help\"><strong>Block-Editor</strong> <small>Heading, Text, Bild, Liste, Buttons, Spalten, HTML</small></p>"
       . "<div class=\"block-editor-shell is-active\" data-block-editor data-block-editor-title-selector=\"input[name='title']\" data-block-editor-media=\"{$mediaJson}\"></div>"
       . "<div class=\"json-editor-shell\" data-block-editor-json-wrap>"
-      . "<p style=\"margin:14px 0 6px 0\"><strong>Page JSON</strong> <small>(Blocks + Meta)</small></p>"
+      . "<p class=\"json-editor-label\"><strong>Page JSON</strong> <small>(Blocks + Meta)</small></p>"
       . "<textarea name=\"page_json\" data-block-editor-source>" . htmlspecialchars($json, ENT_QUOTES) . "</textarea>"
       . "</div>"
       . "</form>";

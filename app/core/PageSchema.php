@@ -113,6 +113,12 @@ final class PageSchema {
         if (!array_key_exists('alt', $data) || !is_string($data['alt'])) {
           $errors[] = "image {$id} alt fehlt";
         }
+        // width/height optional — verhindern Layout-Spruenge (CLS)
+        foreach (['width', 'height'] as $dim) {
+          if (array_key_exists($dim, $data) && (!is_numeric($data[$dim]) || (int)$data[$dim] < 1)) {
+            $errors[] = "image {$id} {$dim} ungültig";
+          }
+        }
         break;
 
       case 'list':

@@ -397,6 +397,48 @@ main{
   font-size:.85em
 }
 
+/* ── Utility-Klassen (ersetzen Inline-Styles der Controller) ── */
+.card{border:1px solid rgba(127,127,127,.25);border-radius:var(--radius-md);padding:16px}
+.admin-title{font-size:inherit;margin:0}
+.actions-top{margin:14px 0 0}
+.form-options{margin:12px 0}
+.label-row{display:flex;gap:10px;align-items:center;margin:8px 0}
+.divider{border:0;border-top:1px solid rgba(127,127,127,.15);margin:28px 0}
+.import-sublist{margin:0 0 8px 30px;font-size:.85em;opacity:.75}
+.card-spaced{margin:16px 0}
+.card-heading{margin:0 0 12px}
+.muted{opacity:.6}
+.nowrap{white-space:nowrap}
+.field-hint{margin:0 0 10px;opacity:.7;font-size:.9em}
+.hint-text{margin:12px 0 0;color:var(--color-muted)}
+.json-editor-label{margin:14px 0 6px 0}
+
+.notice{margin-bottom:16px;padding:12px;border:1px solid rgba(127,127,127,.25);border-radius:10px}
+.notice code{display:block;margin-top:8px;word-break:break-all}
+.notice small{display:block;margin-top:8px}
+
+/* Medienliste */
+.media-thumb{width:60px;height:45px;object-fit:cover;border-radius:4px;display:block}
+.media-thumb-placeholder{display:inline-block;width:60px;height:45px;background:rgba(127,127,127,.1);border-radius:4px;text-align:center;line-height:45px;font-size:.7em}
+.col-thumb{width:70px}
+.media-detail-list{margin:8px 0 0 18px;padding:0}
+
+/* Sortierbare Listen (Seiten/Blog) */
+.row-draggable{cursor:grab}
+.row-draft{opacity:.55}
+
+/* Update-Bereich */
+.update-panel{margin:0 0 24px;padding:20px;border:1px solid rgba(127,127,127,.15);border-radius:8px}
+.version-value{font-size:1.2em;color:var(--color-secondary)}
+.version-new{color:#2e7d32;font-weight:700}
+.text-error{color:#c62828}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.8em}
+.badge-green{background:#e8f5e9;color:#2e7d32}
+.admin-details{margin:14px 0 0}
+.admin-details summary{cursor:pointer;font-weight:600}
+.changelog-list{margin:8px 0 0;padding:0 0 0 18px}
+.update-rollback{margin:14px 0 0;padding:12px 0 0;border-top:1px solid rgba(127,127,127,.15)}
+
 @media (max-width:980px){
   .be-columns-wrap.cols-5,
   .be-columns-wrap.cols-4{

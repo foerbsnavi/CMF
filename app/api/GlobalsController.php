@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Api;
 
 use App\Core\PageSchema;
+use App\Core\SearchIndex;
 use App\Core\Sitemap;
 use App\Core\Storage;
 use App\Core\Theme;
@@ -177,6 +178,9 @@ final class GlobalsController {
   }
 
   public static function writeCustomCss(string $css): void {
+    // PHP-Tags entfernen — die Datei liegt oeffentlich unter assets/css
+    // und darf unter keinen Umstaenden als PHP interpretierbar sein
+    $css = str_replace(['<?php', '<?=', '<?'], '', $css);
     $path = Storage::root() . '/public/assets/css/custom.css';
     $tmp = $path . '.tmp.' . bin2hex(random_bytes(4));
     file_put_contents($tmp, $css);
@@ -184,102 +188,14 @@ final class GlobalsController {
   }
 
   public function searchIndex(): void {
-    $idx = Storage::readJson('content/pages.json');
-    $pages = $idx['pages'] ?? [];
-    $result = [];
-
-    foreach ($pages as $page) {
-      if (($page['status'] ?? 'draft') !== 'published') continue;
-
-      $id = trim((string)($page['id'] ?? ''));
-      if ($id === '') continue;
-
-      $slug = trim((string)($page['slug'] ?? ''));
-      $title = trim((string)($page['title'] ?? ''));
-
-      $pageData = Storage::readJson('content/pages/' . $id . '.json');
-      $meta = is_array($pageData['meta'] ?? null) ? $pageData['meta'] : [];
-      $description = trim((string)($meta['description'] ?? ''));
-
-      $blocks = is_array($pageData['content']['blocks'] ?? null) ? $pageData['content']['blocks'] : [];
-      $text = $this->blocksToPlaintext($blocks);
-      if (mb_strlen($text) > 500) {
-        $text = mb_substr($text, 0, 500);
-      }
-
-      $result[] = [
-        'slug' => $slug,
-        'title' => $title,
-        'description' => $description,
-        'text' => $text,
-      ];
-    }
-
-    // Blog-Posts in den Suchindex aufnehmen
-    $blogIdx = Storage::readJson('content/blog.json');
-    foreach ($blogIdx['posts'] ?? [] as $post) {
-      if (($post['status'] ?? 'draft') !== 'published') continue;
-      $bId = trim((string)($post['id'] ?? ''));
-      if ($bId === '') continue;
-      $postData = Storage::readJson('content/blog/' . $bId . '.json');
-      $bMeta = is_array($postData['meta'] ?? null) ? $postData['meta'] : [];
-      $bBlocks = is_array($postData['content']['blocks'] ?? null) ? $postData['content']['blocks'] : [];
-      $bText = $this->blocksToPlaintext($bBlocks);
-      if (mb_strlen($bText) > 500) $bText = mb_substr($bText, 0, 500);
-      $result[] = [
-        'slug' => 'blog/' . trim((string)($post['slug'] ?? '')),
-        'title' => trim((string)($post['title'] ?? '')),
-        'description' => trim((string)($bMeta['description'] ?? '')),
-        'text' => $bText,
-      ];
-    }
-
+    // Logik liegt zentral in App\Core\SearchIndex — der Endpunkt bleibt
+    // als Fallback fuer Installationen ohne statische search-index.json
     $this->json(200, [
       'ok' => true,
       'data' => [
-        'pages' => $result,
+        'pages' => SearchIndex::build(),
       ]
     ]);
-  }
-
-  private function blocksToPlaintext(array $blocks): string {
-    $parts = [];
-
-    foreach ($blocks as $b) {
-      $type = (string)($b['type'] ?? '');
-      $data = $b['data'] ?? [];
-
-      if ($type === 'heading') {
-        $text = trim((string)($data['text'] ?? ''));
-        if ($text !== '') $parts[] = $text;
-      } elseif ($type === 'text') {
-        $html = (string)($data['html'] ?? '');
-        $stripped = strip_tags($html);
-        $stripped = html_entity_decode($stripped, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $stripped = trim(preg_replace('/\s+/', ' ', $stripped) ?? $stripped);
-        if ($stripped !== '') $parts[] = $stripped;
-      } elseif ($type === 'list') {
-        $items = $data['items'] ?? [];
-        if (is_array($items)) {
-          foreach ($items as $item) {
-            $item = trim((string)$item);
-            if ($item !== '') $parts[] = $item;
-          }
-        }
-      } elseif ($type === 'columns') {
-        $colItems = $data['items'] ?? [];
-        if (is_array($colItems)) {
-          foreach ($colItems as $colBlocks) {
-            if (is_array($colBlocks)) {
-              $sub = $this->blocksToPlaintext($colBlocks);
-              if ($sub !== '') $parts[] = $sub;
-            }
-          }
-        }
-      }
-    }
-
-    return implode(' ', $parts);
   }
 
   public function siteExport(): void {
@@ -316,26 +232,40 @@ final class GlobalsController {
   public function siteImport(): void {
     $payload = $this->readJsonBody();
     $imported = [];
+    $rejected = [];
 
     if (isset($payload['site']) && is_array($payload['site'])) {
-      Storage::writeJson('config/site.json', $payload['site']);
-      $imported[] = 'site';
+      $validation = $this->validateSite($payload['site']);
+      if ($validation['ok']) {
+        Storage::writeJson('config/site.json', $this->normalizeSite($payload['site']));
+        $imported[] = 'site';
+      } else {
+        $rejected['site'] = $validation['errors'];
+      }
     }
 
     if (isset($payload['styles']) && is_array($payload['styles'])) {
-      Storage::writeJson('config/styles.json', $payload['styles']);
-      Theme::writeThemeCss($payload['styles']);
-      $imported[] = 'styles';
+      $validation = $this->validateStyles($payload['styles']);
+      if ($validation['ok']) {
+        $styles = $this->normalizeStyles($payload['styles']);
+        Storage::writeJson('config/styles.json', $styles);
+        Theme::writeThemeCss($styles);
+        $imported[] = 'styles';
+      } else {
+        $rejected['styles'] = $validation['errors'];
+      }
     }
 
-    if (isset($payload['header']) && is_array($payload['header'])) {
-      Storage::writeJson('content/globals/header.json', $payload['header']);
-      $imported[] = 'header';
-    }
-
-    if (isset($payload['footer']) && is_array($payload['footer'])) {
-      Storage::writeJson('content/globals/footer.json', $payload['footer']);
-      $imported[] = 'footer';
+    foreach (['header', 'footer'] as $partName) {
+      if (isset($payload[$partName]) && is_array($payload[$partName])) {
+        $validation = PageSchema::validate($payload[$partName]);
+        if ($validation['ok']) {
+          Storage::writeJson('content/globals/' . $partName . '.json', $this->normalizePartial($payload[$partName], ucfirst($partName)));
+          $imported[] = $partName;
+        } else {
+          $rejected[$partName] = $validation['errors'];
+        }
+      }
     }
 
     if (isset($payload['custom_css']) && is_string($payload['custom_css'])) {
@@ -354,7 +284,14 @@ final class GlobalsController {
         if (!is_array($indexData) || !is_array($contentData)) continue;
 
         $id = trim((string)($indexData['id'] ?? ''));
-        if ($id === '') continue;
+        // ID streng validieren — wird als Dateiname verwendet (Path-Traversal-Schutz)
+        if ($id === '' || !preg_match('/^[a-z0-9][a-z0-9\-_]{0,63}$/', $id)) continue;
+
+        $validation = PageSchema::validate($contentData);
+        if (!$validation['ok']) {
+          $rejected['page:' . $id] = $validation['errors'];
+          continue;
+        }
 
         Storage::writeJson('content/pages/' . $id . '.json', $contentData);
 
@@ -377,9 +314,14 @@ final class GlobalsController {
 
     Sitemap::write();
 
+    $response = ['imported' => $imported];
+    if ($rejected !== []) {
+      $response['rejected'] = $rejected;
+    }
+
     $this->json(200, [
       'ok' => true,
-      'data' => ['imported' => $imported]
+      'data' => $response
     ]);
   }
 
@@ -437,7 +379,8 @@ final class GlobalsController {
       $id = trim((string)($indexData['id'] ?? ''));
       $slug = trim((string)($indexData['slug'] ?? ''));
 
-      if ($id === '' || $slug === '') {
+      // ID streng validieren — wird als Dateiname verwendet (Path-Traversal-Schutz)
+      if ($id === '' || $slug === '' || !preg_match('/^[a-z0-9][a-z0-9\-_]{0,63}$/', $id)) {
         $skipped++;
         continue;
       }

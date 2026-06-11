@@ -29,7 +29,7 @@ final class PartialsController {
     $content = "<form method=\"post\" action=\"/admin.php?a=partial_save\">"
       . "<input type=\"hidden\" name=\"_csrf\" value=\"" . htmlspecialchars(Csrf::token(), ENT_QUOTES) . "\">"
       . "<input type=\"hidden\" name=\"part\" value=\"" . htmlspecialchars($part, ENT_QUOTES) . "\">"
-      . "<div class=\"actions\" style=\"margin:0 0 14px 0\">"
+      . "<div class=\"actions\">"
       . "<a class=\"btn\" href=\"/admin.php?a=partials\">← Zur Liste</a>"
       . "<button class=\"btn primary\" type=\"submit\">Speichern</button>"
       . "</div>"
@@ -41,7 +41,7 @@ final class PartialsController {
       . "<p class=\"be-help\"><strong>" . htmlspecialchars(strtoupper($part), ENT_QUOTES) . "</strong> <small>Header/Footer mit denselben Blocktypen wie Seiten</small></p>"
       . "<div class=\"block-editor-shell is-active\" data-block-editor data-block-editor-title-selector=\"input[name='partial_meta_title']\" data-block-editor-media=\"{$mediaJson}\"></div>"
       . "<div class=\"json-editor-shell\" data-block-editor-json-wrap>"
-      . "<p style=\"margin:14px 0 6px 0\"><strong>" . htmlspecialchars(strtoupper($part), ENT_QUOTES) . " JSON</strong></p>"
+      . "<p class=\"json-editor-label\"><strong>" . htmlspecialchars(strtoupper($part), ENT_QUOTES) . " JSON</strong></p>"
       . "<textarea name=\"json\" data-block-editor-source>" . htmlspecialchars($json, ENT_QUOTES) . "</textarea>"
       . "</div>"
       . "</form>";

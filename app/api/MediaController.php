@@ -116,6 +116,10 @@ final class MediaController {
       ]);
     }
 
+    if ($ext === 'svg') {
+      \App\Core\Sanitizer::svgFile($dest);
+    }
+
     $src = '/media/' . $sub . '/' . $filename;
 
     $this->json(201, [

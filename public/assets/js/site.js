@@ -81,10 +81,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
       debounceTimer = setTimeout(function () {
         if (!searchData) {
-          fetch('/api.php?a=search_index')
-            .then(function (r) { return r.json() })
+          // Statischer Index zuerst (kein PHP-Bootstrap), API als Fallback
+          fetch('/search-index.json')
+            .then(function (r) {
+              if (!r.ok) throw new Error('no static index')
+              return r.json()
+            })
+            .catch(function () {
+              return fetch('/api.php?a=search_index').then(function (r) { return r.json() })
+            })
             .then(function (d) {
-              if (d.ok) searchData = d.data.pages
+              if (d && d.ok) searchData = d.data.pages
               renderSearchResults(query)
             })
             .catch(function () {})
