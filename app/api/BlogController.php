@@ -84,7 +84,14 @@ final class BlogController {
     $id = bin2hex(random_bytes(6));
     $slug = Slug::uniqueSlug(Slug::slugify($slugInput !== '' ? $slugInput : $title), $posts);
     $status = $statusInput === 'published' ? 'published' : 'draft';
-    $order = count($posts) + 1;
+    // Neue Beitraege erscheinen oben (kleinste Order minus 1) —
+    // eine News-Uebersicht zeigt das Neueste zuerst
+    $minOrder = 1;
+    foreach ($posts as $p) {
+      $o = (int)($p['order'] ?? 0);
+      if ($o < $minOrder) $minOrder = $o;
+    }
+    $order = $minOrder - 1;
 
     if (is_string($contentInput)) { $contentInput = json_decode($contentInput, true) ?? null; }
     $postContent = is_array($contentInput) ? $contentInput : [];
@@ -179,6 +186,11 @@ final class BlogController {
 
     $content = $this->normalizePostContent($content, $title, $image);
 
+    // Order optional per API setzbar (z.B. fuer Umsortierung)
+    $order = array_key_exists('order', $payload) && is_numeric($payload['order'])
+      ? (int)$payload['order']
+      : (int)($current['order'] ?? 0);
+
     $updated = [
       'id' => $id,
       'slug' => $slug,
@@ -187,7 +199,7 @@ final class BlogController {
       'image' => $image,
       'description' => $description,
       'category' => $category,
-      'order' => (int)($current['order'] ?? 0),
+      'order' => $order,
       'created' => (string)($current['created'] ?? date('c')),
       'updated' => date('c')
     ];

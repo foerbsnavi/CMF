@@ -23,7 +23,8 @@ final class Renderer {
       : '';
 
     $blocks = is_array($pageData['content']['blocks'] ?? null) ? $pageData['content']['blocks'] : [];
-    $rawImage = trim((string)($meta['image'] ?? '')) ?: self::firstImageSrc($blocks) ?: trim((string)($site['og_image'] ?? ''));
+    $postImage = trim((string)($pageData['_post']['image'] ?? ''));
+    $rawImage = trim((string)($meta['image'] ?? '')) ?: $postImage ?: self::firstImageSrc($blocks) ?: trim((string)($site['og_image'] ?? ''));
     $ogImage = ($rawImage !== '' && $baseUrl !== '' && !str_starts_with($rawImage, 'http'))
       ? $baseUrl . '/' . ltrim($rawImage, '/')
       : $rawImage;
@@ -36,7 +37,8 @@ final class Renderer {
     $footerHtml = self::renderBlocks($footer['content']['blocks'] ?? []);
     $mainHtml = self::renderBlocks($blocks);
 
-    $head = self::head($title, $desc, $lang, $siteName, $canonical, $ogImage, $robots);
+    $head = self::head($title, $desc, $lang, $siteName, $canonical, $ogImage, $robots)
+      . self::jsonLd($slug, $pageData, $site, $canonical, $ogImage);
 
     $siteJsFile = Storage::root() . '/public/assets/js/site.js';
     $siteJsV = is_file($siteJsFile) ? (string)filemtime($siteJsFile) : '1';
@@ -75,9 +77,76 @@ final class Renderer {
       . "<meta name=\"twitter:title\" content=\"{$t}\">"
       . ($d !== '' ? "<meta name=\"twitter:description\" content=\"{$d}\">" : '')
       . ($i !== '' ? "<meta name=\"twitter:image\" content=\"{$i}\">" : '')
+      . "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"News-Feed\" href=\"/feed.xml\">"
       . self::cssLink('/assets/css/base.css')
       . self::cssLink('/assets/css/theme.css')
       . self::cssLink('/assets/css/custom.css');
+  }
+
+  /**
+   * Strukturierte Daten (ld+json): WebSite auf der Startseite,
+   * SoftwareApplication nur wenn site.json "software_schema": true setzt,
+   * Article fuer Blog-Posts (Index-Daten kommen vom Router als _post mit).
+   */
+  private static function jsonLd(string $slug, array $pageData, array $site, string $canonical, string $ogImage): string {
+    $siteName = (string)($site['name'] ?? '');
+    $baseUrl = rtrim((string)($site['baseUrl'] ?? ''), '/');
+    $desc = trim((string)($pageData['meta']['description'] ?? ''));
+    $schemas = [];
+
+    if ($slug === 'home' && $baseUrl !== '') {
+      $schemas[] = [
+        '@context' => 'https://schema.org',
+        '@type' => 'WebSite',
+        'name' => $siteName,
+        'url' => $baseUrl . '/'
+      ];
+
+      if (!empty($site['software_schema'])) {
+        $version = Storage::readJson('version.json');
+        $schemas[] = [
+          '@context' => 'https://schema.org',
+          '@type' => 'SoftwareApplication',
+          'name' => $siteName,
+          'applicationCategory' => 'DeveloperApplication',
+          'operatingSystem' => 'Webserver mit PHP 8.1 oder neuer',
+          'softwareVersion' => (string)($version['version'] ?? ''),
+          'url' => $baseUrl . '/',
+          'downloadUrl' => $baseUrl . '/files/cmf_latest.zip',
+          'offers' => ['@type' => 'Offer', 'price' => '0', 'priceCurrency' => 'EUR'],
+          'description' => $desc
+        ];
+      }
+    }
+
+    $post = $pageData['_post'] ?? null;
+    if (is_array($post) && $canonical !== '') {
+      $article = [
+        '@context' => 'https://schema.org',
+        '@type' => 'Article',
+        'headline' => (string)($post['title'] ?? ''),
+        'description' => (string)($post['description'] ?? ''),
+        'mainEntityOfPage' => $canonical,
+        'author' => ['@type' => 'Organization', 'name' => $siteName],
+        'publisher' => ['@type' => 'Organization', 'name' => $siteName]
+      ];
+      $created = trim((string)($post['created'] ?? ''));
+      $updated = trim((string)($post['updated'] ?? ''));
+      if ($created !== '') $article['datePublished'] = $created;
+      if ($updated !== '') $article['dateModified'] = $updated;
+      if ($ogImage !== '') $article['image'] = $ogImage;
+      $schemas[] = $article;
+    }
+
+    $out = '';
+    foreach ($schemas as $schema) {
+      // JSON_HEX_TAG verhindert Script-Breakout durch </script> in Inhalten
+      $json = json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
+      if ($json !== false) {
+        $out .= '<script type="application/ld+json">' . $json . '</script>';
+      }
+    }
+    return $out;
   }
 
   private static function firstImageSrc(array $blocks): string {

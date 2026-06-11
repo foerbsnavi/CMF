@@ -11,7 +11,17 @@ final class Router {
     $slug = trim($path, '/');
     if ($slug === '') $slug = 'home';
 
+    // Markdown-Variante: /{slug}.md liefert die Seite als Markdown
+    $wantsMarkdown = false;
+    if (str_ends_with($slug, '.md')) {
+      $wantsMarkdown = true;
+      $slug = substr($slug, 0, -3);
+      if ($slug === '') $slug = 'home';
+    }
+
     $pagesIndex = Storage::readJson('content/pages.json');
+    $site = Storage::readJson('config/site.json');
+    $baseUrl = rtrim((string)($site['baseUrl'] ?? ''), '/');
 
     // Blog-Post-Routing: /{blog-slug}/{post-slug}
     if (str_contains($slug, '/')) {
@@ -24,6 +34,18 @@ final class Router {
           foreach ($blogIndex['posts'] ?? [] as $post) {
             if (($post['slug'] ?? '') === $postSlug && ($post['status'] ?? 'draft') === 'published') {
               $postData = Storage::readJson('content/blog/' . $post['id'] . '.json');
+              if ($wantsMarkdown) {
+                self::sendMarkdown(Markdown::page($blogSlug . '/' . $postSlug, $postData, $baseUrl));
+                return;
+              }
+              // Index-Daten fuer Article-Schema (ld+json) mitgeben
+              $postData['_post'] = [
+                'title' => (string)($post['title'] ?? ''),
+                'description' => (string)($post['description'] ?? ''),
+                'image' => (string)($post['image'] ?? ''),
+                'created' => (string)($post['created'] ?? ''),
+                'updated' => (string)($post['updated'] ?? '')
+              ];
               echo Renderer::renderPage($blogSlug . '/' . $postSlug, $postData, $pagesIndex);
               return;
             }
@@ -38,6 +60,12 @@ final class Router {
     }
 
     if (!$page) {
+      if ($wantsMarkdown) {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "404 — Seite nicht gefunden.\n";
+        return;
+      }
       http_response_code(404);
       $pageData = [
         'meta' => ['title' => 'Seite nicht gefunden', 'description' => 'Die angeforderte Seite existiert nicht.'],
@@ -55,6 +83,19 @@ final class Router {
     }
 
     $pageData = Storage::readJson('content/pages/' . $page['id'] . '.json');
+
+    if ($wantsMarkdown) {
+      self::sendMarkdown(Markdown::page($slug, $pageData, $baseUrl));
+      return;
+    }
+
     echo Renderer::renderPage($slug, $pageData, $pagesIndex);
+  }
+
+  private static function sendMarkdown(string $md): void {
+    header('Content-Type: text/markdown; charset=utf-8');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Robots-Tag: noindex');
+    echo $md;
   }
 }

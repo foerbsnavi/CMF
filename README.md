@@ -1,26 +1,53 @@
-# Content Management Frame
+# Content Management Frame (CMF)
 
-Minimalistisches, dateibasiertes CMS fuer schnelle, saubere HTML-Webseiten.
+**Das einfache, dateibasierte Open-Source-CMS — für Menschen, Suchmaschinen und KI-Agenten.**
+
+![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-green) ![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-blue) ![Keine Datenbank](https://img.shields.io/badge/Datenbank-keine-orange)
 
 Kein Framework. Keine Datenbank. Keine Build-Tools.
-
 Nur: PHP, JSON, HTML5, wenig CSS, optional JavaScript.
+
+**Website & Download:** https://cmf.brosemedien.de
+**Live-Demos:** https://cmf.brosemedien.de/demos
 
 ---
 
-## Eigenschaften
+## Warum CMF?
 
-* Dateibasiert – Inhalte als JSON, keine Datenbank
-* Sauberes HTML5 Rendering
-* Blockbasiertes Content-System (heading, text, image, list, buttons, columns, html, blog_overview)
-* Automatische Navigation aus veroeffentlichten Seiten
-* REST-API fuer externe Tools und KI
-* Media-Upload mit automatischer Pfadvergabe
-* Theme-Konfiguration ueber JSON (Farben, Schriften, Abstaende)
+* **Einfach** — ZIP entpacken, per FTP hochladen, loslegen. Kein Installer, keine Datenbank-Konfiguration. ([Mehr](https://cmf.brosemedien.de/einfaches-cms))
+* **Ohne Datenbank** — Inhalte als JSON-Dateien. Backup = Ordner kopieren. ([Mehr](https://cmf.brosemedien.de/cms-ohne-datenbank))
+* **KI-bereit** — `llms.txt`, jede Seite als Markdown (`.md` an die URL anhängen), REST-API mit 30+ Endpunkten, eigene Anleitung für Maschinen. ([Mehr](https://cmf.brosemedien.de/ki-cms))
+* **SEO inklusive** — Sitemap, RSS-Feed, Canonical-URLs, strukturierte Daten (schema.org), Meta-Felder. Automatisch.
+* **Wartungsarm** — Ein-Klick-Systemupdate mit automatischem Backup und Rollback. Kein Plugin-System, das brechen könnte.
+
+---
+
+## Funktionen
+
+* Visueller Block-Editor mit 8 Blocktypen (heading, text, image, list, buttons, columns, html, blog_overview)
+* Automatische Navigation aus veroeffentlichten Seiten (mit Untermenues)
+* Blog/News mit Kategorien, Beitragsbildern und RSS-Feed
+* Theme-Editor: Farben, Schriften, Abstaende ohne Code (10 Font-Familien inklusive)
 * Custom CSS fuer wiederverwendbare Klassen
+* Media-Upload mit MIME-Pruefung und SVG-Bereinigung
+* REST-API fuer externe Tools, Skripte und KI-Agenten
+* `llms.txt` + Markdown-Endpunkte fuer KI-Crawler
+* Live-Suche ueber statischen Such-Index
+* Export/Import (einzelne Seiten oder komplette Webseite, ZIP oder API)
 * Header/Footer als globale Inhalte
-* Blog mit eigenem Admin-Bereich und API
-* Export/Import (einzelne Seiten oder komplette Webseite)
+
+---
+
+## Installation in 3 Schritten
+
+1. **Herunterladen:** ZIP von https://cmf.brosemedien.de/download laden und entpacken
+2. **Hochladen:** Ordnerinhalt in das Web-Root-Verzeichnis kopieren (DocumentRoot auf `public/` zeigen lassen)
+3. **Loslegen:** Domain im Browser aufrufen — das System ist sofort einsatzbereit
+
+Voraussetzungen: PHP 8.1+, Apache mit mod_rewrite, Schreibrechte auf `content/`, `config/` und `public/media/`.
+Ausfuehrliche Anleitung: https://cmf.brosemedien.de/installationsanleitung
+
+Hinweis: Das Paket enthaelt bewusst **keine Favicons** — eigene Dateien (`favicon.ico`, `apple-touch-icon.png`, `site.webmanifest`) einfach in `public/` ablegen.
 
 ---
 
@@ -29,7 +56,7 @@ Nur: PHP, JSON, HTML5, wenig CSS, optional JavaScript.
 ```
 project/
   app/
-    core/       Bootstrap, Router, Renderer, Auth, ApiAuth, PageSchema, Theme, Storage, Sanitizer, Sitemap, Slug, Csrf
+    core/       Bootstrap, Router, Renderer, Markdown, Auth, ApiAuth, PageSchema, Theme, Storage, Sanitizer, Sitemap, SearchIndex, Slug, Csrf
     admin/      PagesController, BlogController, MediaController, SettingsController, ThemeController, UsersController, PartialsController, UpdateController
     api/        PagesController, BlogController, MediaController, GlobalsController
     views/      admin/layout.php
@@ -47,7 +74,7 @@ project/
     assets/fonts/       FontName-Schnitt.ttf (10 Familien, je 3 Schnitte)
     assets/js/          site.js
     media/YYYY/MM/      Uploads
-    files/              Downloads (cmf_latest.zip, README_KI.md)
+    files/              Downloads
   version.json
 ```
 
@@ -70,48 +97,45 @@ Blog: Gleiche Struktur. Index in `content/blog.json` mit slug, categories, posts
 
 ---
 
-## Navigation
+## API & KI
 
-Automatisch aus veroeffentlichten Seiten erzeugt. Sortiert nach `nav.order`. Untermenues ueber `nav.parent` (Seiten-ID). `nav.show` steuert Sichtbarkeit.
+Einstiegspunkt: `/api.php` mit Bearer-Token-Authentifizierung (Token im Admin unter Benutzer anlegen).
+
+```
+GET  /llms.txt                      Wegweiser fuer KI-Crawler (llmstxt.org)
+GET  /{slug}.md                     Jede Seite als Markdown
+GET  /api.php?a=pages               Alle Seiten als JSON
+POST /api.php?a=page_update&id=…    Seite aendern
+POST /api.php?a=blog_create         Beitrag anlegen
+```
+
+Vollstaendige API-Referenz: **README_KI.md** (im Paket) bzw. https://cmf.brosemedien.de/api-anleitung
+Anleitung fuer KI-Agenten: https://cmf.brosemedien.de/maschinen-anleitung
 
 ---
 
 ## Theme
 
-Design ueber `config/styles.json`: Container, Abstaende, Radien, Farben, Schriftgroessen, Fonts. Beim Speichern wird `theme.css` automatisch generiert. Eigene Klassen in `custom.css`.
-
----
-
-## Admin Backend
-
-Login: `/admin.php`. Bereiche: Seiten, Blog, Header/Footer, Theme, Media, Benutzer, Einstellungen.
+Design ueber `config/styles.json` oder den visuellen Theme-Editor: Container, Abstaende, Radien, Farben, Schriftgroessen, Fonts. Beim Speichern wird `theme.css` automatisch generiert. Eigene Klassen in `custom.css`.
 
 ---
 
 ## Sicherheit
 
 CSRF-Schutz, Passwort-Hashes, API-Token-Hash, HTML-Sanitizing fuer Textbloecke,
-SVG-Bereinigung beim Upload, Schutz-.htaccess fuer `config/` und `content/`.
+SVG-Bereinigung beim Upload, MIME-Pruefung beim Import, Update-Server-Allowlist,
+Schutz-.htaccess fuer `config/` und `content/`, Skript-Sperre fuer Upload-Ordner.
 
 ---
 
-## Hinweise zur Installation
+## Lizenz
 
-- Installationsanleitung: https://cmf.brosemedien.de/installationsanleitung
-- Das Paket enthaelt bewusst **keine Favicons** — eigene Dateien
-  (`favicon.ico`, `apple-touch-icon.png`, `site.webmanifest` etc.)
-  einfach in `public/` ablegen.
-
----
-
-## API
-
-Einstiegspunkt: `/api.php` mit Bearer-Token-Authentifizierung.
-
-Vollstaendige API-Referenz: **README_KI.md**
+MIT — frei nutzen, veraendern, verbreiten, auch kommerziell. Einzige Bedingung: Der Lizenztext bleibt im Projekt erhalten.
 
 ---
 
 ## Philosophie
 
 > Inhalte zuerst. Struktur vor Design. Technik statt CMS-Overhead.
+
+Mehr dazu: https://cmf.brosemedien.de/philosophie

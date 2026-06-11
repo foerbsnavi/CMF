@@ -493,11 +493,19 @@ final class GlobalsController {
   }
 
   private function normalizeSite(array $site): array {
-    return [
+    $out = [
       'name' => trim((string)($site['name'] ?? 'Webseiten CMS')),
       'lang' => trim((string)($site['lang'] ?? 'de')),
       'baseUrl' => trim((string)($site['baseUrl'] ?? ''))
     ];
+    // Optionale Felder erhalten
+    if (isset($site['og_image']) && is_string($site['og_image'])) {
+      $out['og_image'] = trim($site['og_image']);
+    }
+    if (array_key_exists('software_schema', $site)) {
+      $out['software_schema'] = (bool)$site['software_schema'];
+    }
+    return $out;
   }
 
   private function validateStyles(array $styles): array {
