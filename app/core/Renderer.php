@@ -344,7 +344,8 @@ final class Renderer {
     $out = '<div>';
     foreach ($items as $it) {
       $label = self::e((string)($it['label'] ?? ''));
-      $href = self::e((string)($it['href'] ?? '#'));
+      // href gegen Schema-Whitelist (blockt javascript:/data: etc., liefert bereits escaped)
+      $href = Sanitizer::safeUrl((string)($it['href'] ?? '#'));
       $style = (string)($it['style'] ?? '');
       $cls = 'btn' . ($style === 'primary' ? ' primary' : '');
       $out .= "<a class=\"{$cls}\" href=\"{$href}\">{$label}</a> ";

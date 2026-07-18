@@ -55,4 +55,30 @@ final class Storage {
     // Cache aktualisieren
     self::$cache[$key] = $data;
   }
+
+  /**
+   * Schreibt eine (abgeleitete) Datei atomar per temp+rename und MELDET Fehler
+   * per error_log, statt sie stillschweigend zu verschlucken. $path ist ein
+   * absoluter Pfad. Gibt true bei Erfolg zurueck. Gedacht fuer die generierten
+   * public-Dateien (feed.xml, llms.txt, sitemap.xml, robots.txt, theme.css …),
+   * deren fehlgeschlagenes Schreiben (z.B. public/ read-only) sonst unbemerkt bleibt.
+   */
+  public static function writeFileAtomic(string $path, string $contents): bool {
+    $dir = dirname($path);
+    if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
+      error_log('CMF: Verzeichnis nicht anlegbar (Rechte?): ' . $dir);
+      return false;
+    }
+    $tmp = $path . '.tmp.' . bin2hex(random_bytes(4));
+    if (@file_put_contents($tmp, $contents) === false) {
+      error_log('CMF: Schreiben fehlgeschlagen (Rechte auf ' . $dir . '?): ' . $path);
+      return false;
+    }
+    if (!@rename($tmp, $path)) {
+      @unlink($tmp);
+      error_log('CMF: Umbenennen fehlgeschlagen: ' . $path);
+      return false;
+    }
+    return true;
+  }
 }

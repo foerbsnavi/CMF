@@ -59,10 +59,7 @@ final class Sitemap {
       . $items
       . "</channel>\n</rss>\n";
 
-    $path = Storage::root() . '/public/feed.xml';
-    $tmp = $path . '.tmp.' . bin2hex(random_bytes(4));
-    file_put_contents($tmp, $xml);
-    rename($tmp, $path);
+    Storage::writeFileAtomic(Storage::root() . '/public/feed.xml', $xml);
   }
 
   /**
@@ -119,10 +116,7 @@ final class Sitemap {
       }
     }
 
-    $path = Storage::root() . '/public/llms.txt';
-    $tmp = $path . '.tmp.' . bin2hex(random_bytes(4));
-    file_put_contents($tmp, $txt);
-    rename($tmp, $path);
+    Storage::writeFileAtomic(Storage::root() . '/public/llms.txt', $txt);
   }
 
   private static function writeSitemap(string $baseUrl, array $pages): void {
@@ -170,10 +164,7 @@ final class Sitemap {
 
     $xml .= "</urlset>";
 
-    $path = Storage::root() . '/public/sitemap.xml';
-    $tmp = $path . '.tmp.' . bin2hex(random_bytes(4));
-    file_put_contents($tmp, $xml);
-    rename($tmp, $path);
+    Storage::writeFileAtomic(Storage::root() . '/public/sitemap.xml', $xml);
   }
 
   /**
@@ -193,9 +184,6 @@ final class Sitemap {
     $sitemap = $baseUrl !== '' ? "Sitemap: {$baseUrl}/sitemap.xml\n" : '';
     $txt = "User-agent: *\nDisallow: /admin.php\nDisallow: /api.php\n{$sitemap}";
 
-    $path = Storage::root() . '/public/robots.txt';
-    $tmp = $path . '.tmp.' . bin2hex(random_bytes(4));
-    file_put_contents($tmp, $txt);
-    rename($tmp, $path);
+    Storage::writeFileAtomic(Storage::root() . '/public/robots.txt', $txt);
   }
 }

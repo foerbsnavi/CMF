@@ -70,10 +70,7 @@ final class SearchIndex {
     );
     if ($json === false) return;
 
-    $path = Storage::root() . '/public/search-index.json';
-    $tmp = $path . '.tmp.' . bin2hex(random_bytes(4));
-    file_put_contents($tmp, $json);
-    rename($tmp, $path);
+    Storage::writeFileAtomic(Storage::root() . '/public/search-index.json', $json);
   }
 
   private static function blocksToPlaintext(array $blocks): string {

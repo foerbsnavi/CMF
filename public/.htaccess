@@ -37,6 +37,21 @@ Options -Indexes
   </FilesMatch>
 </IfModule>
 
+# Security-Header (defense-in-depth, always = auch auf Fehler-/401-Antworten)
+# CSP bewusst mit 'unsafe-inline' fuer script/style: der html-Block liefert gewollt
+# rohes HTML/Embeds aus und der Admin nutzt Inline-Skripte (Login-Countdown, Sortierung,
+# Bild-Picker). Der eigentliche Schutz gegen den javascript:-Vektor liegt in der
+# URL-Schema-Whitelist im Code (Sanitizer/Renderer), nicht hier. img/media/frame bleiben
+# fuer https: offen, damit eingebettete Inhalte nicht brechen; frame-ancestors/base-uri/
+# form-action/object-src greifen dennoch hart. HSTS bewusst NICHT gesetzt (schwer umkehrbar).
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(), camera=(), microphone=()"
+  Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-src 'self' https:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+</IfModule>
+
 # URL-Rewriting
 <IfModule mod_rewrite.c>
 RewriteEngine On

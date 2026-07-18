@@ -13,6 +13,23 @@ spl_autoload_register(function(string $class): void {
 
 use App\Core\Storage;
 use App\Core\Theme;
+use App\Core\Sitemap;
+
+// Session-Härtung: gilt für ALLE später (in Auth/Csrf) gestarteten Sessions.
+// Muss vor dem ersten session_start() stehen — Bootstrap läuft als Erstes.
+// secure nur unter HTTPS setzen, damit ein reiner HTTP-Zugang (Dev/LAN) nicht das
+// Admin-Cookie verliert; die Live-Seite erzwingt HTTPS ohnehin per .htaccess.
+$httpsOn = (($_SERVER['HTTPS'] ?? '') !== '' && strtolower((string)$_SERVER['HTTPS']) !== 'off')
+  || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https'
+  || (int)($_SERVER['SERVER_PORT'] ?? 0) === 443;
+@ini_set('session.use_strict_mode', '1');
+session_set_cookie_params([
+  'lifetime' => 0,
+  'path' => '/',
+  'httponly' => true,
+  'samesite' => 'Lax',
+  'secure' => $httpsOn,
+]);
 
 Storage::ensureDirs();
 
@@ -32,3 +49,12 @@ if (is_file($maintenanceFile)) {
 }
 
 Theme::ensureThemeCss();
+
+// Abgeleitete public-Dateien bei Erststart erzeugen (z. B. frische Installation aus dem ZIP):
+// feed.xml und llms.txt liegen dem ZIP NICHT bei und entstünden sonst erst beim ersten
+// Speichern im Admin — die beworbene KI-/Markdown-Funktion (llms.txt) und der RSS-Feed
+// wären bis dahin tot. Fehlt eine der beiden, einmalig alle Generatoren anstoßen
+// (Sitemap::write erzeugt sitemap.xml, robots.txt, feed.xml, llms.txt und search-index.json).
+if (!is_file(Storage::root() . '/public/feed.xml') || !is_file(Storage::root() . '/public/llms.txt')) {
+  Sitemap::write();
+}

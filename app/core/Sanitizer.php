@@ -11,14 +11,43 @@ final class Sanitizer {
     $html = preg_replace('/\s(?:on\w+|formaction)\s*=\s*"[^"]*"/i', '', $html) ?? $html;
     $html = preg_replace("/\s(?:on\w+|formaction)\s*=\s*'[^']*'/i", '', $html) ?? $html;
     $html = preg_replace('/\s(?:on\w+|formaction)\s*=\s*[^\s>]+/i', '', $html) ?? $html;
-    // javascript: und data: URLs in href/src entfernen
-    $html = preg_replace('/\b(href|src)\s*=\s*"[^"]*(?:javascript|data)\s*:[^"]*"/i', '$1="#"', $html) ?? $html;
-    $html = preg_replace("/\b(href|src)\s*=\s*'[^']*(?:javascript|data)\s*:[^']*'/i", "$1='#'", $html) ?? $html;
-    $html = preg_replace('/\b(href|src)\s*=\s*(?:javascript|data)\s*:[^\s>]*/i', '$1="#"', $html) ?? $html;
+    // href/src gegen eine SCHEMA-WHITELIST pruefen — nicht per Blacklist. Die alte
+    // Blacklist ("javascript"/"data" suchen) war per Entity oder Steuerzeichen umgehbar
+    // (z.B. java&#115;cript: oder java<TAB>script:). safeUrl() entschluesselt beides vorher.
+    $decode = fn(string $v): string => html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $html = preg_replace_callback('/\b(href|src)\s*=\s*"([^"]*)"/i',
+      fn(array $m): string => $m[1] . '="' . self::safeUrl($decode($m[2])) . '"', $html) ?? $html;
+    $html = preg_replace_callback("/\\b(href|src)\\s*=\\s*'([^']*)'/i",
+      fn(array $m): string => $m[1] . '="' . self::safeUrl($decode($m[2])) . '"', $html) ?? $html;
+    $html = preg_replace_callback('/\b(href|src)\s*=\s*([^\s>"\']+)/i',
+      fn(array $m): string => $m[1] . '="' . self::safeUrl($decode($m[2])) . '"', $html) ?? $html;
     // style-Attribut entfernen (verhindert CSS-Expressions)
     $html = preg_replace('/\sstyle\s*=\s*"[^"]*"/i', '', $html) ?? $html;
     $html = preg_replace("/\sstyle\s*=\s*'[^']*'/i", '', $html) ?? $html;
     return $html;
+  }
+
+  /**
+   * Prueft eine URL gegen eine Schema-WHITELIST und gibt sie attribut-sicher
+   * (htmlspecialchars) zurueck. Erlaubt: relative/verankerte Ziele ohne Schema
+   * sowie http, https, mailto, tel. Alles andere (javascript:, data:, vbscript: …)
+   * wird auf '#' neutralisiert. Steuerzeichen werden vor der Pruefung entfernt,
+   * damit sie kein Schema verschleiern koennen (java<TAB>script:).
+   */
+  public static function safeUrl(string $url): string {
+    $probe = preg_replace('/[\x00-\x20]+/', '', $url) ?? $url;
+    $hasScheme = (bool)preg_match('#^[a-z][a-z0-9+.\-]*:#i', $probe);
+    if ($hasScheme) {
+      $lower = strtolower($probe);
+      $ok = str_starts_with($lower, 'http://')
+        || str_starts_with($lower, 'https://')
+        || str_starts_with($lower, 'mailto:')
+        || str_starts_with($lower, 'tel:');
+      if (!$ok) {
+        return '#';
+      }
+    }
+    return htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
   }
 
   /**

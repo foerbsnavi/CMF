@@ -44,7 +44,7 @@ Nur: PHP, JSON, HTML5, wenig CSS, optional JavaScript.
 2. **Hochladen:** Ordnerinhalt in das Web-Root-Verzeichnis kopieren (DocumentRoot auf `public/` zeigen lassen)
 3. **Loslegen:** Domain im Browser aufrufen — das System ist sofort einsatzbereit
 
-Voraussetzungen: PHP 8.1+, Apache mit mod_rewrite, Schreibrechte auf `content/`, `config/` und `public/media/`.
+Voraussetzungen: PHP 8.1+, Apache mit mod_rewrite, Schreibrechte auf `content/`, `config/`, `public/media/` sowie `public/` und `public/assets/css/` (dort erzeugt das System `sitemap.xml`, `robots.txt`, `feed.xml`, `llms.txt`, `search-index.json` und `theme.css` zur Laufzeit).
 Ausfuehrliche Anleitung: https://cmf.brosemedien.de/installationsanleitung
 
 Hinweis: Das Paket enthaelt bewusst **keine Favicons** — eigene Dateien (`favicon.ico`, `apple-touch-icon.png`, `site.webmanifest`) einfach in `public/` ablegen.

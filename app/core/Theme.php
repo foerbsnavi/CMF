@@ -74,10 +74,7 @@ final class Theme {
       . "h4{font-size:var(--h4);color:var(--color-secondary)}"
       . "h5{font-size:var(--h5);color:var(--color-secondary)}";
 
-    $cssPath = Storage::root() . '/public/assets/css/theme.css';
-    $tmp = $cssPath . '.tmp.' . bin2hex(random_bytes(4));
-    file_put_contents($tmp, $css);
-    rename($tmp, $cssPath);
+    Storage::writeFileAtomic(Storage::root() . '/public/assets/css/theme.css', $css);
   }
 
   public static function availableFonts(): array {
