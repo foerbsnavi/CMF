@@ -13,8 +13,11 @@ final class PageSchema {
     'buttons',
     'columns',
     'html',
-    'blog_overview'
+    'blog_overview',
+    'form'
   ];
+
+  private const FORM_FIELD_TYPES = ['text', 'email', 'tel', 'textarea', 'select', 'checkbox', 'radio'];
 
   public static function validate(array $page): array {
     $errors = [];
@@ -193,6 +196,55 @@ final class PageSchema {
         break;
 
       case 'blog_overview':
+        break;
+
+      case 'form':
+        if (!isset($data['fields']) || !is_array($data['fields']) || $data['fields'] === []) {
+          $errors[] = "form {$id} fields fehlen";
+          break;
+        }
+        if (array_key_exists('email_to', $data) && trim((string)$data['email_to']) !== ''
+            && !filter_var(trim((string)$data['email_to']), FILTER_VALIDATE_EMAIL)) {
+          $errors[] = "form {$id} email_to ungültig";
+        }
+        $names = [];
+        foreach ($data['fields'] as $fi => $field) {
+          if (!is_array($field)) {
+            $errors[] = "form {$id} feld {$fi} ungültig";
+            continue;
+          }
+          $fname = trim((string)($field['name'] ?? ''));
+          if ($fname === '') {
+            $errors[] = "form {$id} feld {$fi} ohne name";
+          } elseif (!preg_match('/^[a-z0-9_]+$/', $fname)) {
+            $errors[] = "form {$id} feld {$fi} name ungültig (nur a-z 0-9 _)";
+          } elseif (in_array($fname, $names, true)) {
+            $errors[] = "form {$id} doppelter feldname: {$fname}";
+          } else {
+            $names[] = $fname;
+          }
+          if (trim((string)($field['label'] ?? '')) === '') {
+            $errors[] = "form {$id} feld {$fi} label fehlt";
+          }
+          $ftype = trim((string)($field['type'] ?? ''));
+          if (!in_array($ftype, self::FORM_FIELD_TYPES, true)) {
+            $errors[] = "form {$id} feld {$fi} unbekannter typ: {$ftype}";
+          }
+          if (array_key_exists('required', $field) && !is_bool($field['required'])) {
+            $errors[] = "form {$id} feld {$fi} required ungültig";
+          }
+          if (in_array($ftype, ['select', 'radio'], true)) {
+            if (!isset($field['options']) || !is_array($field['options']) || $field['options'] === []) {
+              $errors[] = "form {$id} feld {$fi} options fehlen";
+            } else {
+              foreach ($field['options'] as $oi => $opt) {
+                if (!is_string($opt) || trim($opt) === '') {
+                  $errors[] = "form {$id} feld {$fi} option {$oi} ungültig";
+                }
+              }
+            }
+          }
+        }
         break;
     }
   }

@@ -46,6 +46,9 @@ final class Router {
                 'created' => (string)($post['created'] ?? ''),
                 'updated' => (string)($post['updated'] ?? '')
               ];
+              if (self::isFormPost()) {
+                FormHandler::handle($blogSlug . '/' . $postSlug, $postData);
+              }
               echo Renderer::renderPage($blogSlug . '/' . $postSlug, $postData, $pagesIndex);
               return;
             }
@@ -89,7 +92,16 @@ final class Router {
       return;
     }
 
+    if (self::isFormPost()) {
+      FormHandler::handle($slug, $pageData);
+    }
+
     echo Renderer::renderPage($slug, $pageData, $pagesIndex);
+  }
+
+  private static function isFormPost(): bool {
+    return strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST'
+      && isset($_POST['__cmf_form']);
   }
 
   private static function sendMarkdown(string $md): void {

@@ -297,8 +297,13 @@ final class Renderer {
       'columns' => self::columns($data),
       'html' => self::rawHtml($data),
       'blog_overview' => self::blogOverview($data),
+      'form' => self::form($data, (string)($b['id'] ?? '')),
       default => ''
     };
+  }
+
+  private static function form(array $d, string $id): string {
+    return FormHandler::render($d, $id);
   }
 
   private static function heading(array $d): string {

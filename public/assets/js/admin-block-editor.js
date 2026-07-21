@@ -7,8 +7,28 @@ document.addEventListener('DOMContentLoaded', function () {
     { type: 'buttons', label: 'Buttons' },
     { type: 'columns', label: 'Spalten' },
     { type: 'html', label: 'HTML' },
-    { type: 'blog_overview', label: 'Blog-Uebersicht' }
+    { type: 'blog_overview', label: 'Blog-Uebersicht' },
+    { type: 'form', label: 'Formular' }
   ]
+
+  const FORM_FIELD_TYPES = [
+    { type: 'text', label: 'Text' },
+    { type: 'email', label: 'E-Mail' },
+    { type: 'tel', label: 'Telefon' },
+    { type: 'textarea', label: 'Mehrzeilig' },
+    { type: 'select', label: 'Auswahl' },
+    { type: 'checkbox', label: 'Checkbox' },
+    { type: 'radio', label: 'Radio' }
+  ]
+
+  function slugifyName(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .substring(0, 40)
+  }
 
   let uidCounter = 1
   let mediaPickerCallback = null
@@ -134,6 +154,27 @@ document.addEventListener('DOMContentLoaded', function () {
         id: uid('b'),
         type: 'blog_overview',
         data: { category: '' }
+      }
+    }
+
+    if (type === 'form') {
+      return {
+        id: uid('b'),
+        type: 'form',
+        data: {
+          title: 'Kontakt',
+          intro: '',
+          submit_label: 'Absenden',
+          success_message: 'Vielen Dank! Ihre Nachricht wurde gesendet.',
+          store: true,
+          email_to: '',
+          fields: [
+            { name: 'name', type: 'text', label: 'Name', required: true },
+            { name: 'email', type: 'email', label: 'E-Mail', required: true },
+            { name: 'nachricht', type: 'textarea', label: 'Nachricht', required: true },
+            { name: 'einwilligung', type: 'checkbox', label: 'Ich stimme der Datenschutzerklärung zu.', required: true }
+          ]
+        }
       }
     }
 
@@ -344,6 +385,64 @@ document.addEventListener('DOMContentLoaded', function () {
     container.appendChild(add)
   }
 
+  function renderFormFields(container, fields) {
+    const list = document.createElement('div')
+    list.className = 'be-form-fields'
+    list.dataset.formFields = '1'
+
+    function typeOptions(selected) {
+      return FORM_FIELD_TYPES.map(function (t) {
+        return '<option value="' + t.type + '"' + (t.type === selected ? ' selected' : '') + '>' + esc(t.label) + '</option>'
+      }).join('')
+    }
+
+    function addRow(field) {
+      const f = field && typeof field === 'object' ? field : {}
+      const ftype = String(f.type || 'text')
+      const row = document.createElement('div')
+      row.className = 'be-form-field'
+      row.innerHTML =
+        '<div class="be-form-field-main">' +
+          '<input type="text" data-ff-label placeholder="Beschriftung" value="' + esc(f.label || '') + '">' +
+          '<select data-ff-type>' + typeOptions(ftype) + '</select>' +
+          '<label class="be-ff-req"><input type="checkbox" data-ff-required' + (f.required ? ' checked' : '') + '> Pflicht</label>' +
+          '<button type="button" class="be-icon-btn" data-ff-up aria-label="Nach oben">↑</button>' +
+          '<button type="button" class="be-icon-btn" data-ff-down aria-label="Nach unten">↓</button>' +
+          '<button type="button" class="be-icon-btn" data-ff-remove aria-label="Entfernen">✕</button>' +
+        '</div>' +
+        '<div class="be-form-field-options" data-ff-options-wrap>' +
+          '<input type="text" data-ff-options placeholder="Optionen mit Komma trennen: A, B, C" value="' +
+            esc(Array.isArray(f.options) ? f.options.join(', ') : '') + '">' +
+        '</div>'
+
+      const typeSel = row.querySelector('[data-ff-type]')
+      const optWrap = row.querySelector('[data-ff-options-wrap]')
+      function syncOptVisibility() {
+        const t = typeSel.value
+        optWrap.style.display = (t === 'select' || t === 'radio') ? '' : 'none'
+      }
+      syncOptVisibility()
+      typeSel.addEventListener('change', syncOptVisibility)
+
+      row.querySelector('[data-ff-remove]').addEventListener('click', function () { row.remove() })
+      row.querySelector('[data-ff-up]').addEventListener('click', function () { moveNode(row, 'up') })
+      row.querySelector('[data-ff-down]').addEventListener('click', function () { moveNode(row, 'down') })
+
+      list.appendChild(row)
+    }
+
+    ;(Array.isArray(fields) && fields.length ? fields : []).forEach(addRow)
+
+    const add = document.createElement('button')
+    add.type = 'button'
+    add.className = 'btn'
+    add.textContent = '+ Feld'
+    add.addEventListener('click', function () { addRow({ type: 'text', label: '', required: false }) })
+
+    container.appendChild(list)
+    container.appendChild(add)
+  }
+
   function createBlockElement(block, media) {
     const el = document.createElement('div')
     el.className = 'be-block'
@@ -476,6 +575,33 @@ document.addEventListener('DOMContentLoaded', function () {
       body.appendChild(info)
       var catVal = String(data.category || '')
       body.appendChild(createField('Kategorie-Filter', '<input type="text" data-field="category" value="' + esc(catVal) + '" placeholder="Leer = alle Beitraege">'))
+    }
+
+    if (el.dataset.blockType === 'form') {
+      const grid = document.createElement('div')
+      grid.className = 'be-grid be-grid-2'
+      grid.appendChild(createField('Titel (optional)', '<input type="text" data-field="title" value="' + esc(data.title || '') + '">'))
+      grid.appendChild(createField('Button-Text', '<input type="text" data-field="submit_label" value="' + esc(data.submit_label || 'Absenden') + '">'))
+      body.appendChild(grid)
+
+      body.appendChild(createField('Einleitungstext (optional)', '<input type="text" data-field="intro" value="' + esc(data.intro || '') + '">'))
+      body.appendChild(createField('Danke-Meldung', '<input type="text" data-field="success_message" value="' + esc(data.success_message || '') + '">'))
+
+      const grid2 = document.createElement('div')
+      grid2.className = 'be-grid be-grid-2'
+      grid2.appendChild(createField('E-Mail-Empfänger (optional)', '<input type="text" data-field="email_to" value="' + esc(data.email_to || '') + '" placeholder="Leer = keine E-Mail">'))
+      grid2.appendChild(createField('Einsendungen speichern', '<select data-field="store">' +
+        '<option value="1"' + ((data.store === false) ? '' : ' selected') + '>ja</option>' +
+        '<option value="0"' + ((data.store === false) ? ' selected' : '') + '>nein</option>' +
+      '</select>'))
+      body.appendChild(grid2)
+
+      const info = document.createElement('p')
+      info.className = 'be-help'
+      info.innerHTML = '<small>Felder des Formulars. Bei <strong>Auswahl</strong>/<strong>Radio</strong> die Optionen mit Komma trennen. Eine Checkbox eignet sich für die Datenschutz-Einwilligung.</small>'
+      body.appendChild(info)
+
+      renderFormFields(body, Array.isArray(data.fields) ? data.fields : [])
     }
 
     if (el.dataset.blockType === 'columns') {
@@ -707,6 +833,42 @@ document.addEventListener('DOMContentLoaded', function () {
         type: 'blog_overview',
         data: catValue !== '' ? { category: catValue } : {}
       }
+    }
+
+    if (type === 'form') {
+      function fieldVal(sel) {
+        var node = el.querySelector(sel)
+        return node ? String(node.value || '') : ''
+      }
+      var usedNames = {}
+      var fields = Array.from(el.querySelectorAll(':scope > .be-block-body [data-form-fields] > .be-form-field')).map(function (row) {
+        var label = String((row.querySelector('[data-ff-label]') || {}).value || '').trim()
+        var ftype = String((row.querySelector('[data-ff-type]') || {}).value || 'text')
+        var required = !!(row.querySelector('[data-ff-required]') || {}).checked
+        if (label === '') return null
+        var name = slugifyName(label) || 'feld'
+        // Namen eindeutig machen
+        var base = name, n = 2
+        while (usedNames[name]) { name = base + '_' + (n++) }
+        usedNames[name] = true
+        var field = { name: name, type: ftype, label: label, required: required }
+        if (ftype === 'select' || ftype === 'radio') {
+          var optRaw = String((row.querySelector('[data-ff-options]') || {}).value || '')
+          field.options = optRaw.split(',').map(function (s) { return s.trim() }).filter(function (s) { return s !== '' })
+        }
+        return field
+      }).filter(Boolean)
+
+      var data = {
+        title: fieldVal('[data-field="title"]').trim(),
+        intro: fieldVal('[data-field="intro"]').trim(),
+        submit_label: fieldVal('[data-field="submit_label"]').trim() || 'Absenden',
+        success_message: fieldVal('[data-field="success_message"]').trim(),
+        store: fieldVal('[data-field="store"]') !== '0',
+        email_to: fieldVal('[data-field="email_to"]').trim(),
+        fields: fields
+      }
+      return { id: id, type: 'form', data: data }
     }
 
     return null

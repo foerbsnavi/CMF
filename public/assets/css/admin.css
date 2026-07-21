@@ -482,3 +482,55 @@ main{
     display:block
   }
 }
+
+/* ── Formular-Feld-Baukasten (Editor) ────────────────────── */
+.be-form-fields{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-bottom:10px
+}
+.be-form-field{
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-md);
+  padding:10px
+}
+.be-form-field-main{
+  display:grid;
+  grid-template-columns:1fr auto auto auto auto auto;
+  gap:8px;
+  align-items:center
+}
+.be-ff-req{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  white-space:nowrap
+}
+.be-form-field-options{
+  margin-top:8px
+}
+@media (max-width:700px){
+  .be-form-field-main{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+/* ── Einsendungen (Admin-Ansicht) ────────────────────────── */
+.card.is-new{
+  border-color:var(--color-primary)
+}
+.card + .card{
+  margin-top:14px
+}
+table.form-submission th{
+  text-align:left;
+  vertical-align:top;
+  width:30%;
+  padding:6px 10px 6px 0;
+  color:var(--color-muted)
+}
+table.form-submission td{
+  padding:6px 0;
+  word-break:break-word
+}

@@ -12,6 +12,7 @@ $adminNav = [
   ['label' => 'Header/Footer', 'href' => '/admin.php?a=partials', 'active' => in_array($active, ['partials', 'partial_edit', 'partial_save'], true)],
   ['label' => 'Theme', 'href' => '/admin.php?a=theme', 'active' => in_array($active, ['theme'], true)],
   ['label' => 'Media', 'href' => '/admin.php?a=media', 'active' => in_array($active, ['media'], true)],
+  ['label' => 'Einsendungen', 'href' => '/admin.php?a=forms', 'active' => in_array($active, ['forms', 'form_view', 'form_mark', 'form_delete', 'form_clear', 'form_export'], true)],
   ['label' => 'Benutzer', 'href' => '/admin.php?a=users', 'active' => in_array($active, ['users', 'user_new', 'user_edit', 'user_save', 'user_delete'], true)],
   ['label' => 'Einstellungen', 'href' => '/admin.php?a=settings', 'active' => in_array($active, ['settings', 'settings_export', 'settings_import_analyze', 'settings_import_run'], true)],
   ['label' => 'Frontend', 'href' => '/', 'active' => false, 'target' => '_blank'],

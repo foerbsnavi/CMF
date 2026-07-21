@@ -3,6 +3,15 @@
 Alle nennenswerten Aenderungen am Content Management Frame.
 Aktuelle Version und maschinenlesbarer Changelog: `GET api.php?a=version_check` (oeffentlich).
 
+## 1.15.0 — 2026-07-21
+
+- Neu: Blocktyp "Formular" — Feld-Baukasten (Text, E-Mail, Telefon, Mehrzeilig, Auswahl, Checkbox, Radio) mit Pflichtfeld-Option
+- Neu: Admin-Bereich "Einsendungen" — Formular-Einsendungen lesen, als gelesen markieren, loeschen, als CSV exportieren
+- Formulare: Speicherung der Einsendungen und optionaler E-Mail-Versand (mit Schutz vor Header-Injection)
+- Formulare: Spam-Schutz per Honeypot und signierter Zeit-Falle — ganz ohne Cookie (datenschutz- und cache-freundlich)
+- Formulare: barrierefreie Felder (Labels, Pflichtkennzeichnung, Fehlermeldungen nach WCAG) und DSGVO-Einwilligung als Checkbox
+- Sicherheit: CSV-Export gegen Formel-Injection abgesichert
+
 ## 1.14.0 — 2026-07-18
 
 - Sicherheit: Security-Header via public/.htaccess (CSP, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy)

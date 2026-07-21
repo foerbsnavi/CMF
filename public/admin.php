@@ -12,6 +12,7 @@ use App\Admin\UsersController;
 use App\Admin\SettingsController;
 use App\Admin\BlogController;
 use App\Admin\UpdateController;
+use App\Admin\FormsController;
 
 Auth::requireLogin();
 
@@ -55,6 +56,13 @@ $map = [
   'user_create' => [UsersController::class, 'create'],
   'user_password' => [UsersController::class, 'password'],
   'user_delete' => [UsersController::class, 'delete'],
+
+  'forms' => [FormsController::class, 'index'],
+  'form_view' => [FormsController::class, 'view'],
+  'form_mark' => [FormsController::class, 'mark'],
+  'form_delete' => [FormsController::class, 'delete'],
+  'form_clear' => [FormsController::class, 'clear'],
+  'form_export' => [FormsController::class, 'export'],
 
   'update_run' => [UpdateController::class, 'run'],
   'update_rollback' => [UpdateController::class, 'rollback'],

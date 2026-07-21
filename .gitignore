@@ -2,6 +2,10 @@
 .env
 .env.*
 config/login_attempts.json
+config/secret.json
+
+# ── Formular-Einsendungen (Nutzerdaten) ──────────────────────
+content/form-submissions/
 
 # ── User-Inhalte (werden zur Laufzeit erzeugt) ───────────────
 public/media/*

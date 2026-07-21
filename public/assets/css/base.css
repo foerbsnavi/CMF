@@ -734,3 +734,114 @@ footer a:hover {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Formular-Block ──────────────────────────────────────── */
+
+.cmf-form {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	max-width: 640px;
+}
+
+.cmf-form-intro {
+	margin: 0 0 4px;
+	color: var(--color-muted, #777);
+}
+
+.cmf-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.cmf-field label,
+.cmf-field .cmf-label {
+	font-weight: 500;
+}
+
+.cmf-form input[type="text"],
+.cmf-form input[type="email"],
+.cmf-form input[type="tel"],
+.cmf-form textarea,
+.cmf-form select {
+	width: 100%;
+	padding: 10px 12px;
+	border: 1px solid var(--color-border, rgba(127,127,127,.25));
+	border-radius: var(--radius-md, 8px);
+	background: var(--color-bg, #fff);
+	color: var(--color-text, #1c1c1c);
+}
+
+.cmf-form textarea {
+	resize: vertical;
+	min-height: 120px;
+}
+
+.cmf-form input:focus,
+.cmf-form textarea:focus,
+.cmf-form select:focus {
+	outline: 2px solid var(--color-primary, #ea6b17);
+	outline-offset: 1px;
+	border-color: var(--color-primary, #ea6b17);
+}
+
+.cmf-checkbox,
+.cmf-radio {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	font-weight: 400;
+	cursor: pointer;
+}
+
+.cmf-checkbox input,
+.cmf-radio input {
+	margin-top: 3px;
+	flex: 0 0 auto;
+}
+
+.cmf-radio-group {
+	border: 0;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.cmf-req {
+	color: #b3261e; /* konventionelles Pflicht-Rot, Kontrast 6,54:1 (WCAG AA) */
+}
+
+/* Honeypot: fuer Menschen und Screenreader unsichtbar, im DOM vorhanden */
+.cmf-hp {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+.cmf-field-error {
+	color: #b3261e;
+	font-size: .9em;
+}
+
+.cmf-form input[aria-invalid="true"],
+.cmf-form textarea[aria-invalid="true"],
+.cmf-form select[aria-invalid="true"] {
+	border-color: #b3261e;
+}
+
+.cmf-form-error {
+	color: #b3261e;
+	font-weight: 500;
+}
+
+.cmf-form-success {
+	padding: 14px 16px;
+	border: 1px solid var(--color-primary, #ea6b17);
+	border-radius: var(--radius-md, 8px);
+	background: rgba(234,107,23,.08);
+}

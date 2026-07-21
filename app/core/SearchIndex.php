@@ -107,6 +107,11 @@ final class SearchIndex {
             }
           }
         }
+      } elseif ($type === 'form') {
+        $title = trim((string)($data['title'] ?? ''));
+        if ($title !== '') $parts[] = $title;
+        $intro = trim((string)($data['intro'] ?? ''));
+        if ($intro !== '') $parts[] = $intro;
       }
     }
 

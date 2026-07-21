@@ -112,6 +112,23 @@ final class Markdown {
         }
         return implode("\n", $lines);
 
+      case 'form':
+        $title = trim((string)($d['title'] ?? ''));
+        $intro = trim((string)($d['intro'] ?? ''));
+        $fields = is_array($d['fields'] ?? null) ? $d['fields'] : [];
+        $lines = [];
+        if ($title !== '') $lines[] = '### ' . $title;
+        if ($intro !== '') $lines[] = $intro;
+        $lines[] = '*(Formular — nur im Browser ausfüllbar.)*';
+        foreach ($fields as $field) {
+          if (!is_array($field)) continue;
+          $label = trim((string)($field['label'] ?? ''));
+          if ($label === '') continue;
+          $req = !empty($field['required']) ? ' (Pflichtfeld)' : '';
+          $lines[] = '- ' . $label . $req;
+        }
+        return implode("\n", $lines);
+
       default:
         return '';
     }
