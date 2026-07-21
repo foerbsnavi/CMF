@@ -505,6 +505,23 @@ final class GlobalsController {
     if (array_key_exists('software_schema', $site)) {
       $out['software_schema'] = (bool)$site['software_schema'];
     }
+    // CSP-Erweiterung pro Installation erhalten (siehe App\Core\Csp).
+    // Nur bekannte Direktiv-Schluessel mit String-Arrays; die eigentliche
+    // Quell-Saeuberung passiert beim Senden in Csp::sanitizeSource.
+    if (isset($site['csp']) && is_array($site['csp'])) {
+      $allowed = ['script_src', 'connect_src', 'style_src', 'img_src', 'font_src', 'media_src', 'frame_src'];
+      $csp = [];
+      foreach ($allowed as $k) {
+        if (isset($site['csp'][$k]) && is_array($site['csp'][$k])) {
+          $vals = [];
+          foreach ($site['csp'][$k] as $v) {
+            if (is_string($v) && trim($v) !== '') $vals[] = trim($v);
+          }
+          if ($vals !== []) $csp[$k] = array_values(array_unique($vals));
+        }
+      }
+      if ($csp !== []) $out['csp'] = $csp;
+    }
     return $out;
   }
 

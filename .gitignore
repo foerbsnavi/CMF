@@ -3,6 +3,7 @@
 .env.*
 config/login_attempts.json
 config/secret.json
+config/form_ratelimit.json
 
 # ── Formular-Einsendungen (Nutzerdaten) ──────────────────────
 content/form-submissions/

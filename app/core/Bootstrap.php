@@ -14,6 +14,7 @@ spl_autoload_register(function(string $class): void {
 use App\Core\Storage;
 use App\Core\Theme;
 use App\Core\Sitemap;
+use App\Core\Csp;
 
 // Session-Härtung: gilt für ALLE später (in Auth/Csrf) gestarteten Sessions.
 // Muss vor dem ersten session_start() stehen — Bootstrap läuft als Erstes.
@@ -32,6 +33,12 @@ session_set_cookie_params([
 ]);
 
 Storage::ensureDirs();
+
+// Content-Security-Policy dynamisch senden (frueh, vor jeder Ausgabe — auch
+// vor der Wartungs-/Fehlerseite). Basis ist streng; pro Installation ueber
+// config/site.json "csp" erweiterbar. Ersetzt die frueher statische CSP-Zeile
+// in public/.htaccess; die uebrigen Security-Header bleiben dort.
+Csp::send();
 
 // Maintenance-Modus: Blockiert alle Requests ausser Admin-Update
 $maintenanceFile = Storage::root() . '/config/.maintenance';

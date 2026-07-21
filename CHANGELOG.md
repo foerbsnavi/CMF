@@ -3,6 +3,12 @@
 Alle nennenswerten Aenderungen am Content Management Frame.
 Aktuelle Version und maschinenlesbarer Changelog: `GET api.php?a=version_check` (oeffentlich).
 
+## 1.16.0 — 2026-07-21
+
+- Neu: Formular-Bestaetigungsmail an den Absender (Option "confirm" pro Formular) — der Absender erhaelt eine Kopie seiner Angaben; mit Drossel gegen Missbrauch als Mail-Verstaerker (max. 5/Stunde je IP, 60/Stunde global)
+- Neu: Content-Security-Policy pro Installation erweiterbar ueber config/site.json "csp" (fuer externe Widgets/Embeds) — die strenge Basis bleibt, kritische Direktiven sind nicht aufweichbar; CSP wird jetzt dynamisch von PHP gesendet statt statisch in .htaccess
+- Sicherheit: konfigurierbare CSP-Quellen werden streng gesaeubert (nur Keywords/Schemata/Host-Quellen, kein CRLF/unsafe-eval)
+
 ## 1.15.0 — 2026-07-21
 
 - Neu: Blocktyp "Formular" — Feld-Baukasten (Text, E-Mail, Telefon, Mehrzeilig, Auswahl, Checkbox, Radio) mit Pflichtfeld-Option

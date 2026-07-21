@@ -254,10 +254,22 @@ final class FormHandler {
       self::store($slug, $blockId, $data, $clean);
     }
 
-    // Mail (optional)
+    // Mail an den Betreiber (optional)
     $emailTo = trim((string)($data['email_to'] ?? ''));
     if ($emailTo !== '' && filter_var($emailTo, FILTER_VALIDATE_EMAIL)) {
       self::sendMail($emailTo, $data, $clean);
+    }
+
+    // Bestätigungsmail an den Absender (optional) — an die erste gueltige
+    // E-Mail-Adresse aus einem Feld vom Typ 'email', mit Spiegel der Angaben.
+    if (!empty($data['confirm'])) {
+      $submitter = self::firstEmail($fields, $clean);
+      // Drossel: die Bestaetigung geht an eine vom Absender frei eingegebene
+      // Adresse — per-IP-Ratenbegrenzung verhindert Missbrauch als Mail-Bombing-/
+      // Backscatter-Verstaerker gegen eine Opfer-Adresse.
+      if ($submitter !== '' && self::confirmRateOk(self::ipHash())) {
+        self::sendConfirmation($submitter, $data, $clean);
+      }
     }
 
     self::redirectSuccess($slug, $blockId);
@@ -281,9 +293,7 @@ final class FormHandler {
     // Titel aktuell halten (kann sich im Editor geaendert haben)
     $store['form']['title'] = trim((string)($data['title'] ?? ($store['form']['title'] ?? '')));
 
-    $ipHash = '';
-    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
-    if ($ip !== '') $ipHash = substr(hash('sha256', $ip . '|' . self::secret()), 0, 16);
+    $ipHash = self::ipHash();
 
     $store['submissions'][] = [
       'ts' => gmdate('c'),
@@ -339,6 +349,124 @@ final class FormHandler {
   /** Entfernt CR/LF (und Kontrollzeichen) — verhindert Header-Injection. */
   private static function headerSafe(string $s): string {
     return trim((string)preg_replace('/[\r\n\x00]+/', ' ', $s));
+  }
+
+  /** Erste gueltige E-Mail-Adresse aus einem Feld vom Typ 'email' (fuer die Bestaetigung). */
+  private static function firstEmail(array $fields, array $clean): string {
+    foreach ($fields as $f) {
+      if (!is_array($f)) continue;
+      if (trim((string)($f['type'] ?? '')) !== 'email') continue;
+      $name = trim((string)($f['name'] ?? ''));
+      $v = trim((string)($clean[$name]['value'] ?? ''));
+      if ($v !== '' && filter_var($v, FILTER_VALIDATE_EMAIL)) return $v;
+    }
+    return '';
+  }
+
+  /** Bestaetigungsmail an den Absender mit Spiegel seiner Angaben. */
+  private static function sendConfirmation(string $to, array $data, array $clean): void {
+    if (!function_exists('mail')) return; // sauberer Fallback
+
+    $site = Storage::readJson('config/site.json');
+    $siteName = self::headerSafe((string)($site['name'] ?? 'Webseite'));
+    $host = parse_url((string)($site['baseUrl'] ?? ''), PHP_URL_HOST) ?: 'localhost';
+    $from = 'noreply@' . preg_replace('/[^a-z0-9.\-]/i', '', $host);
+
+    $title = trim((string)($data['title'] ?? ''));
+    $subject = self::headerSafe('Ihre Nachricht' . ($title !== '' ? ' – ' . $title : '') . ' bei ' . $siteName);
+
+    $lines = ['Vielen Dank für Ihre Nachricht! Wir haben folgende Angaben erhalten:', ''];
+    foreach ($clean as $f) {
+      $lines[] = $f['label'] . ': ' . $f['value'];
+    }
+    $lines[] = '';
+    $lines[] = 'Diese Bestätigung wurde automatisch erzeugt. Bitte nicht darauf antworten.';
+    $body = implode("\n", $lines) . "\n";
+
+    $headers = 'From: ' . $siteName . ' <' . $from . ">\r\n";
+    $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+
+    // $to ist bereits per FILTER_VALIDATE_EMAIL geprueft (kein CRLF moeglich).
+    @mail($to, $subject, $body, $headers);
+  }
+
+  /** Pseudonymer, stabiler IP-Hash (16 hex) — fuer Speicherung und Drossel. */
+  private static function ipHash(): string {
+    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+    if ($ip === '') return '';
+    // IPv6 auf das /64-Praefix kappen: Endkunden haben ganze /64-Bloecke, sonst
+    // umginge blosse Adress-Rotation die Drossel. Nebeneffekt: datensparsamer.
+    if (str_contains($ip, ':')) {
+      $bin = @inet_pton($ip);
+      if ($bin !== false && strlen($bin) === 16) {
+        $ip = 'v6/64:' . bin2hex(substr($bin, 0, 8));
+      }
+    }
+    return substr(hash('sha256', $ip . '|' . self::secret()), 0, 16);
+  }
+
+  /**
+   * Ratenbegrenzung fuer die Bestaetigungsmail — verhindert Missbrauch als
+   * Mail-Verstaerker gegen eine frei eingegebene Fremdadresse. Grenzen pro
+   * rollender Stunde: max. 5 je IP (IPv6 auf /64) UND max. 60 global (Backstop
+   * gegen verteilte/IPv6-Rotation). Der gesamte Read-Modify-Write laeuft unter
+   * EINEM exklusiven Lock auf config/form_ratelimit.json (kein TOCTOU-Race).
+   * Laufzeitdatei, nicht im Paket. Bei Datei-/Lock-Fehler wird NICHT geblockt.
+   */
+  private static function confirmRateOk(string $ipHash): bool {
+    if ($ipHash === '') return true; // ohne IP nicht drosselbar (Randfall)
+    $now = time();
+    $window = 3600;
+    $perIp = 5;
+    $global = 60;
+
+    $file = Storage::root() . '/config/form_ratelimit.json';
+    $dir = dirname($file);
+    if (!is_dir($dir)) @mkdir($dir, 0775, true);
+
+    $fp = @fopen($file, 'c+');
+    if ($fp === false) return true; // nicht drosselbar → nicht blockieren
+    try {
+      if (!flock($fp, LOCK_EX)) { fclose($fp); return true; }
+
+      $raw = stream_get_contents($fp);
+      $data = json_decode(is_string($raw) && $raw !== '' ? $raw : '{}', true);
+      if (!is_array($data)) $data = [];
+
+      // Globale Liste prunten
+      $all = is_array($data['all'] ?? null) ? $data['all'] : [];
+      $all = array_values(array_filter($all, fn($t) => is_int($t) && ($now - $t) < $window));
+
+      // Per-IP-Listen prunten
+      $ips = is_array($data['ips'] ?? null) ? $data['ips'] : [];
+      $out = [];
+      foreach ($ips as $h => $times) {
+        if (!is_array($times)) continue;
+        $kept = array_values(array_filter($times, fn($t) => is_int($t) && ($now - $t) < $window));
+        if ($kept !== []) $out[(string)$h] = $kept;
+      }
+
+      $mine = $out[$ipHash] ?? [];
+      $ok = count($mine) < $perIp && count($all) < $global;
+      if ($ok) {
+        $mine[] = $now;
+        $out[$ipHash] = $mine;
+        $all[] = $now;
+      }
+
+      $json = json_encode(['ips' => $out, 'all' => $all], JSON_UNESCAPED_SLASHES);
+      ftruncate($fp, 0);
+      rewind($fp);
+      fwrite($fp, $json !== false ? $json : '{}');
+      fflush($fp);
+      flock($fp, LOCK_UN);
+      fclose($fp);
+      return $ok;
+    } catch (\Throwable $e) {
+      @flock($fp, LOCK_UN);
+      @fclose($fp);
+      return true; // im Fehlerfall nicht blockieren (Verfuegbarkeit vor Drossel)
+    }
   }
 
   // ── Zeit-Falle (HMAC) ───────────────────────────────────────────────

@@ -594,6 +594,10 @@ document.addEventListener('DOMContentLoaded', function () {
         '<option value="1"' + ((data.store === false) ? '' : ' selected') + '>ja</option>' +
         '<option value="0"' + ((data.store === false) ? ' selected' : '') + '>nein</option>' +
       '</select>'))
+      grid2.appendChild(createField('Bestätigungsmail an Absender', '<select data-field="confirm">' +
+        '<option value="1"' + (data.confirm ? ' selected' : '') + '>ja</option>' +
+        '<option value="0"' + (data.confirm ? '' : ' selected') + '>nein</option>' +
+      '</select>'))
       body.appendChild(grid2)
 
       const info = document.createElement('p')
@@ -866,6 +870,7 @@ document.addEventListener('DOMContentLoaded', function () {
         success_message: fieldVal('[data-field="success_message"]').trim(),
         store: fieldVal('[data-field="store"]') !== '0',
         email_to: fieldVal('[data-field="email_to"]').trim(),
+        confirm: fieldVal('[data-field="confirm"]') === '1',
         fields: fields
       }
       return { id: id, type: 'form', data: data }

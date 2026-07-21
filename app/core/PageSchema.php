@@ -207,6 +207,9 @@ final class PageSchema {
             && !filter_var(trim((string)$data['email_to']), FILTER_VALIDATE_EMAIL)) {
           $errors[] = "form {$id} email_to ungültig";
         }
+        if (array_key_exists('confirm', $data) && !is_bool($data['confirm'])) {
+          $errors[] = "form {$id} confirm ungültig";
+        }
         $names = [];
         foreach ($data['fields'] as $fi => $field) {
           if (!is_array($field)) {
